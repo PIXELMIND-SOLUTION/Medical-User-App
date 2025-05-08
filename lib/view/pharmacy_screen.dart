@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:medical_user_app/view/cart_screen.dart';
 import 'package:medical_user_app/widgets/bottom_navigation.dart';
 
 class PharmacyScreen extends StatefulWidget {
@@ -74,7 +75,7 @@ class _PharmacyScreenState extends State<PharmacyScreen> {
             ),
           ),
         ),
-        bottomNavigationBar: CustomBottomNavBar());
+);
   }
 
   Widget _buildPharmacyHeader() {
@@ -312,7 +313,9 @@ class _PharmacyScreenState extends State<PharmacyScreen> {
                 ),
                 const SizedBox(height: 8),
                 ElevatedButton(
-                  onPressed: () {},
+                  onPressed: () {
+                    Navigator.push(context, MaterialPageRoute(builder: (context)=>CartScreen()));
+                  },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.deepPurple,
                     minimumSize: const Size(double.infinity, 36),

@@ -127,7 +127,7 @@ class NearPharmacyScreen extends StatelessWidget {
             ),
           ),
         ),
-        bottomNavigationBar: CustomBottomNavBar());
+);
   }
 
   Widget _buildPharmacyItem(BuildContext context) {

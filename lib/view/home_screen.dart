@@ -817,6 +817,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:medical_user_app/view/checkout_screen.dart';
+import 'package:medical_user_app/view/profile_screen.dart';
 import 'package:medical_user_app/widgets/all_medicines.dart';
 import 'package:medical_user_app/widgets/bottom_navigation.dart';
 import 'package:medical_user_app/widgets/periodic_plans.dart';
@@ -870,10 +871,15 @@ class _HomeScreenState extends State<HomeScreen> {
                   // Profile and notification row
                   Row(
                     children: [
-                      CircleAvatar(
-                        radius: 24,
-                        backgroundImage: AssetImage('assets/profile.png'),
-                        backgroundColor: Colors.grey[300],
+                      GestureDetector(
+                        onTap: (){
+                          Navigator.push(context, MaterialPageRoute(builder: (context)=>ProfileScreen()));
+                        },
+                        child: CircleAvatar(
+                          radius: 24,
+                          backgroundImage: AssetImage('assets/profile.png'),
+                          backgroundColor: Colors.grey[300],
+                        ),
                       ),
                       SizedBox(width: 12),
                       Column(
@@ -1112,7 +1118,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
                   SizedBox(height: 24),
 
-                  // Previous orders
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(16),
@@ -1285,7 +1290,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
         ),
-        bottomNavigationBar: CustomBottomNavBar());
+);
   }
 
   Widget _buildAllMedicineCardGrid() {

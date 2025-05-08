@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:medical_user_app/view/near_pharmacy_screen.dart';
+import 'package:medical_user_app/view/payment_screen.dart';
 import 'package:medical_user_app/widgets/bottom_navigation.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
@@ -72,7 +73,7 @@ class _CartScreenState extends State<CartScreen> {
             ],
           ),
         ),
-        bottomNavigationBar: CustomBottomNavBar());
+);
   }
 
   Future<void> _selectFromCalendar({required bool isStartDate}) async {
@@ -422,7 +423,7 @@ class _CartScreenState extends State<CartScreen> {
         child: ElevatedButton(
           onPressed: () {
             Navigator.push(context,
-                MaterialPageRoute(builder: (context) => NearPharmacyScreen()));
+                MaterialPageRoute(builder: (context) => PaymentScreen()));
           },
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFF5931DD),

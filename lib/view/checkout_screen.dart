@@ -177,7 +177,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             ],
           ),
         ),
-        bottomNavigationBar: CustomBottomNavBar());
+);
   }
 
   Future<void> _selectFromCalendar({required bool isStartDate}) async {

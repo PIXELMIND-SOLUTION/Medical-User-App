@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:medical_user_app/view/cart_screen.dart';
+import 'package:medical_user_app/view/payment_screen.dart';
 
 class ScannedMedicineScreen extends StatelessWidget {
   const ScannedMedicineScreen({Key? key}) : super(key: key);
@@ -265,7 +266,7 @@ class ScannedMedicineScreen extends StatelessWidget {
                         Expanded(
                           child: ElevatedButton(
                             onPressed: () {
-                              Navigator.push(context, MaterialPageRoute(builder: (context)=>CartScreen()));
+                              Navigator.push(context, MaterialPageRoute(builder: (context)=>PaymentScreen()));
                             },
                             style: ElevatedButton.styleFrom(
                               padding: const EdgeInsets.symmetric(vertical: 12),

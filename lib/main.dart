@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:medical_user_app/view/login_screen.dart';
-import 'package:medical_user_app/view/scanned_medicine_screen.dart';
-import 'package:medical_user_app/view/welcome_screen.dart';
+import 'package:medical_user_app/view/splash_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,7 +17,7 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: const ScannedMedicineScreen(),
+      home: const SplashScreen(),
     );
   }
 }

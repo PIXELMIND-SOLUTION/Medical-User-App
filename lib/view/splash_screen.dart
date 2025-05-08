@@ -1,94 +1,76 @@
-// import 'package:car_rental_app/utils/storage_helper.dart';
-// import 'package:car_rental_app/views/home_screen.dart';
-// import 'package:car_rental_app/views/login_screen.dart';
-// import 'package:flutter/material.dart';
-// import 'package:lottie/lottie.dart';
+import 'dart:async';
+import 'package:flutter/material.dart';
+import 'package:medical_user_app/view/on_boarding_screen.dart';
 
-// class SplashScreen extends StatefulWidget {
-//   const SplashScreen({super.key});
+class SplashScreen extends StatefulWidget {
+  const SplashScreen({super.key});
 
-//   @override
-//   State<SplashScreen> createState() => _SplashScreenState();
-// }
+  @override
+  State<SplashScreen> createState() => _SplashScreenState();
+}
 
-// class _SplashScreenState extends State<SplashScreen> {
-//   @override
-//   void initState() {
-//     super.initState();
-//     _checkLoginStatus();
-//   }
+class _SplashScreenState extends State<SplashScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Set timer to navigate after 4 seconds
+    Timer(const Duration(seconds: 4), () {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const OnboardingScreen()),
+      );
+    });
+  }
 
-//   Future<void> _checkLoginStatus() async {
-//     // Add a delay for splash screen visibility (adjust as needed)
-//     await Future.delayed(const Duration(seconds: 3));
-
-//     // Get the auth token from storage
-//     final userId = await StorageHelper.getUserId();
-
-//     // Check if context is still valid
-//     if (!mounted) return;
-
-//     // If userId exists, navigate to home screen
-//     if (userId != null && userId.isNotEmpty) {
-//       try {
-//         Navigator.of(context).pushReplacement(
-//             MaterialPageRoute(builder: (context) => const HomeScreen()));
-//       } catch (e) {
-//         // Handle error - userId might be invalid
-//         Navigator.of(context).pushReplacement(
-//             MaterialPageRoute(builder: (context) => const LoginScreen()));
-//       }
-//     } else {
-//       // No userId, navigate to login screen
-//       Navigator.of(context).pushReplacement(
-//           MaterialPageRoute(builder: (context) => const LoginScreen()));
-//     }
-//   }
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       backgroundColor: const Color(0XFF1E0AFE),
-//       body: Center(
-//         child: Column(
-//           mainAxisAlignment: MainAxisAlignment.center,
-//           children: [
-//             // Car animation using Lottie
-//             SizedBox(
-//               width: 250,
-//               height: 250,
-//               child: Lottie.network(
-//                 'https://assets3.lottiefiles.com/packages/lf20_2eGBrTWKcC.json', // Car animation
-//                 fit: BoxFit.contain,
-//                 animate: true,
-//                 repeat: true,
-//                 errorBuilder: (context, error, stackTrace) {
-//                   return const Icon(
-//                     Icons.directions_car,
-//                     size: 100,
-//                     color: Colors.white,
-//                   );
-//                 },
-//               ),
-//             ),
-//             const SizedBox(height: 24),
-//             // App name
-//             const Text(
-//               'Car Rental App',
-//               style: TextStyle(
-//                 fontSize: 24,
-//                 fontWeight: FontWeight.bold,
-//                 color: Colors.white,
-//               ),
-//             ),
-//             const SizedBox(height: 30),
-//             // Loading indicator
-//             const CircularProgressIndicator(
-//               color: Colors.white,
-//             ),
-//           ],
-//         ),
-//       ),
-//     );
-//   }
-// }
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: SafeArea(
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const SizedBox(height: 74),
+              // App Logo
+              Container(
+                width: 238,
+                height: 238,
+                child: Center(
+                  child: Image.asset(
+                    'assets/login.png',
+                    width: 238,
+                    height: 238,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 40),
+              // Welcome Text
+              const Text(
+                'Welcome',
+                style: TextStyle(
+                  fontSize: 40,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 10),
+              // Slogan Text
+              const Text(
+                'Your Health Is Our Priority',
+                style: TextStyle(
+                  fontSize: 20,
+                  color: Colors.grey,
+                ),
+              ),
+              const SizedBox(height: 80),
+              // Loading Indicator
+              const CircularProgressIndicator(
+                color: Color(0xFF5931DD),
+                strokeWidth: 5,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

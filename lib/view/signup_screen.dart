@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/widgets.dart';
-import 'package:medical_user_app/view/home_screen.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -10,184 +8,247 @@ class SignupScreen extends StatefulWidget {
 }
 
 class _SignupScreenState extends State<SignupScreen> {
+  final nameController = TextEditingController();
+  final mobileController = TextEditingController();
+  final invitationController = TextEditingController();
+
+  @override
+  void dispose() {
+    nameController.dispose();
+    mobileController.dispose();
+    invitationController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      body: Stack(
-        children: [
-          Container(
-            decoration: BoxDecoration(
-              color: Color(0xFFE87722),
-            ),
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios, color: Colors.black, size: 20),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text(
+          'Back',
+          style: TextStyle(
+            color: Colors.black,
+            fontSize: 16,
+            fontWeight: FontWeight.normal,
           ),
-          Align(
-            alignment: Alignment.bottomCenter,
-            child: Container(
-              height: 579,
-              width: double.infinity,
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(40),
-                  topRight: Radius.circular(40),
+        ),
+        titleSpacing: -10,
+      ),
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              const SizedBox(height: 20),
+
+              // Center the image using Align
+              Align(
+                alignment: Alignment.center,
+                child: SizedBox(
+                  width: 150,
+                  height: 173.5,
+                  child: Image.asset("assets/signup.png"),
                 ),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              const SizedBox(height: 16),
+
+              // Title (aligned left)
+              const Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Signup Account',
+                  style: TextStyle(
+                    fontSize: 36,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+
+              // Subtitle (aligned left)
+              const Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Hello! Let\'s Join with Us',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.black54,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // Name Field
+              _buildInputField(
+                label: 'Name',
+                hint: 'Enter your Name',
+                controller: nameController,
+              ),
+              const SizedBox(height: 5),
+
+              // Mobile Number Field
+              _buildInputField(
+                label: 'Mobile Number',
+                hint: 'Enter your Mobile Number',
+                controller: mobileController,
+                keyboardType: TextInputType.phone,
+              ),
+              const SizedBox(height: 5),
+
+              // Invitation Code Field
+              _buildInputField(
+                label: 'Invitation Code ( Optional )',
+                hint: 'Enter Invitation Code',
+                controller: invitationController,
+              ),
+              const SizedBox(height: 20),
+
+              // Signup Button
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: () {
+                    // Handle signup logic
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF5E35B1),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 0,
+                  ),
+                  child: const Text(
+                    'Signup',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // Or divider
+              Row(
                 children: [
-                  const SizedBox(height: 24),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Sign Up',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 25,
-                        ),
-                      ),
-                    ],
+                  Expanded(
+                    child: Container(
+                      height: 1,
+                      color: Colors.grey.withOpacity(0.3),
+                    ),
                   ),
-                  const SizedBox(height: 32),
-                  SizedBox(
-                    width: 342,
-                    height: 48,
-                    child: TextField(
-                      keyboardType: TextInputType.name,
-                      decoration: InputDecoration(
-                        hintText: "Enter your name",
-                        border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10)),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16.0),
+                    child: Text(
+                      'Or',
+                      style: TextStyle(
+                        color: Colors.grey,
+                        fontSize: 14,
                       ),
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  SizedBox(
-                    width: 342,
-                    height: 48,
-                    child: TextField(
-                      keyboardType: TextInputType.phone,
-                      decoration: InputDecoration(
-                        hintText: "Enter your mobile number",
-                        border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10)),
-                      ),
+                  Expanded(
+                    child: Container(
+                      height: 1,
+                      color: Colors.grey.withOpacity(0.3),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  SizedBox(
-                    width: 342,
-                    height: 48,
-                    child: TextField(
-                      keyboardType: TextInputType.emailAddress,
-                      decoration: InputDecoration(
-                        hintText: "Enter Email",
-                        border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10)),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 60),
-                  SizedBox(
-                      height: 46,
-                      width: 350,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (context) => HomeScreen()));
-                        },
-                        style: ElevatedButton.styleFrom(
-                          padding: EdgeInsets.zero, // remove default padding
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          elevation: 4,
-                          backgroundColor:
-                              Colors.transparent, // important for gradient
-                          shadowColor: Colors.black.withOpacity(0.3),
-                        ),
-                        child: Ink(
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [
-                                Color(0xFFE33629), // Red shade
-                                Color(0xFFE87F2D), // Orange shade
-                              ],
-                              begin: Alignment.centerLeft,
-                              end: Alignment.centerRight,
-                            ),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Container(
-                            alignment: Alignment.center,
-                            constraints: const BoxConstraints(
-                                minWidth: 120, minHeight: 48),
-                            child: const Text(
-                              'Signup',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
-                            ),
-                          ),
-                        ),
-                      )),
-                  SizedBox(
-                    height: 20,
-                  ),
-                  Row(
-                    children: [
-                      Expanded(child: Divider(thickness: 1)),
-                      Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 8),
-                        child: Text('Or'),
-                      ),
-                      Expanded(child: Divider(thickness: 1)),
-                    ],
-                  ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      _buildSocialIcon(
-                        'https://cdn-icons-png.flaticon.com/512/2991/2991148.png',
-                        onPressed: () {},
-                      ),
-                      const SizedBox(width: 16),
-                      _buildSocialIcon(
-                        'https://img.freepik.com/premium-vector/x-new-social-network-black-app-icon-twitter-rebranded-as-x-twitter-s-logo-was-changed_277909-568.jpg?semt=ais_hybrid&w=740',
-                        onPressed: () {},
-                      ),
-                      const SizedBox(width: 16),
-                      _buildSocialIcon(
-                        'https://cdn-icons-png.flaticon.com/512/5968/5968764.png',
-                        onPressed: () {},
-                      ),
-                    ],
                   ),
                 ],
               ),
-            ),
+              const SizedBox(height: 15),
+
+              // Social Login buttons
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _socialLoginButton('assets/icons/google.png', () {}),
+                  const SizedBox(width: 24),
+                  _socialLoginButton('assets/icons/facebook.png', () {}),
+                  const SizedBox(width: 24),
+                  _socialLoginButton('assets/icons/x.png', () {}),
+                ],
+              ),
+              const SizedBox(height: 30),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
 
-  Widget _buildSocialIcon(String imageUrl, {required VoidCallback onPressed}) {
-    return CircleAvatar(
-      backgroundColor: const Color.fromARGB(255, 255, 251, 251),
-      radius: 25,
-      child: IconButton(
-        onPressed: onPressed,
-        icon: Image.network(
-          imageUrl,
-          width: 28,
-          height: 28,
+  Widget _buildInputField({
+    required String label,
+    required String hint,
+    required TextEditingController controller,
+    TextInputType keyboardType = TextInputType.text,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: Colors.black87,
+          ),
+        ),
+        const SizedBox(height: 8),
+        TextField(
+          controller: controller,
+          keyboardType: keyboardType,
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: const TextStyle(
+              color: Colors.black38,
+              fontSize: 14,
+            ),
+            filled: true,
+            fillColor: Colors.grey.withOpacity(0.05),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 16,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _socialLoginButton(String assetName, VoidCallback onPressed) {
+    return InkWell(
+      onTap: onPressed,
+      child: Container(
+        width: 34,
+        height: 34,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: Colors.grey.withOpacity(0.3),
+            width: 1,
+          ),
+        ),
+        child: Center(
+          child: Image.asset(
+            assetName,
+            width: 24, // Adjust the size based on your needs
+            height: 24, // Adjust the size based on your needs
+          ),
         ),
       ),
     );

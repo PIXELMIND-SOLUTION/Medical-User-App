@@ -39,6 +39,7 @@ dependencies:
   intl: ^0.20.2
   material_design_icons_flutter: ^7.0.7296
   mobile_scanner: ^6.0.10
+  speech_to_text: ^7.0.0
 
 dev_dependencies:
   flutter_test:
@@ -84,6 +85,19 @@ flutter:
     - assets/icons/babyCare.png
     - assets/icons/syrup.png
     - assets/background_image.png
+    - assets/icons/card.png
+    - assets/icons/phone_pay.png
+    - assets/icons/gp.jpeg
+    - assets/icons/paytm.png
+    - assets/icons/cash.png
+    - assets/signup.png
+    - assets/signup.png
+    - assets/welcome.png
+    - assets/getstart.jpg
+    - assets/otp.png
+    - assets/icons/facebook.png
+    - assets/icons/x.png
+    - assets/icons/google.png
   #   - images/a_dot_ham.jpeg
 
   # An image asset can refer to one or more resolution-specific "variants", see
