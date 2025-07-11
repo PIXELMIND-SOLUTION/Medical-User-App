@@ -87,23 +87,23 @@ class _OtpScreenState extends State<OtpScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.black, size: 20),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text(
-          'Back',
-          style: TextStyle(
-            color: Colors.black,
-            fontSize: 16,
-            fontWeight: FontWeight.normal,
-          ),
-        ),
-        titleSpacing: -10,
-      ),
+      // appBar: AppBar(
+      //   backgroundColor: Colors.white,
+      //   elevation: 0,
+      //   leading: IconButton(
+      //     icon: const Icon(Icons.arrow_back_ios, color: Colors.black, size: 20),
+      //     onPressed: () => Navigator.pop(context),
+      //   ),
+      //   title: const Text(
+      //     'Back',
+      //     style: TextStyle(
+      //       color: Colors.black,
+      //       fontSize: 16,
+      //       fontWeight: FontWeight.normal,
+      //     ),
+      //   ),
+      //   titleSpacing: -10,
+      // ),
       body: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24.0),
@@ -319,6 +319,7 @@ class _OtpScreenState extends State<OtpScreen> {
                         .join();
                     
                     if (otp == "1234") {
+                              _showSuccessSnackBar('Login successful!');
                       Navigator.pushReplacement(
                         context,
                         MaterialPageRoute(builder: (context) => MainLayout()),
@@ -354,5 +355,17 @@ class _OtpScreenState extends State<OtpScreen> {
         ),
       ),
     );
+  }
+
+    void _showSuccessSnackBar(String message) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Colors.green,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 }
