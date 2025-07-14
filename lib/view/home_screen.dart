@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:medical_user_app/models/medicine_model.dart';
 import 'package:medical_user_app/providers/category_provider.dart';
+import 'package:medical_user_app/providers/language_provider.dart';
 import 'package:medical_user_app/providers/medicine_provider.dart';
 import 'package:medical_user_app/providers/services_provider.dart';
 import 'package:medical_user_app/view/checkout_screen.dart';
@@ -88,7 +89,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text("Hello",
+                        AppText('wish',
                             style: TextStyle(
                                 fontSize: 16, color: Colors.grey[600])),
                         Text("Manoj Kumar",
@@ -98,13 +99,85 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     Spacer(),
                     Container(
-                      padding: EdgeInsets.all(8),
+                      padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: Colors.grey[100],
-                        shape: BoxShape.circle,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.black12),
                       ),
-                      child: Icon(Icons.translate,
-                          size: 24, color: Colors.black54),
+                      child: GestureDetector(
+                        onTap: () {
+                          showModalBottomSheet(
+                            context: context,
+                            shape: const RoundedRectangleBorder(
+                              borderRadius: BorderRadius.vertical(
+                                  top: Radius.circular(20)),
+                            ),
+                            builder: (BuildContext context) {
+                              return Consumer<LanguageProvider>(
+                                builder: (context, languageProvider, child) {
+                                  return Padding(
+                                    padding: const EdgeInsets.all(16.0),
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        // Header
+                                        Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            const Text(
+                                              'Select Language',
+                                              style: TextStyle(
+                                                fontSize: 20,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                            IconButton(
+                                              onPressed: () =>
+                                                  Navigator.pop(context),
+                                              icon: const Icon(Icons.close),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 16),
+                                        _buildLanguageOption(
+                                          context: context,
+                                          languageCode: 'te',
+                                          languageName: 'తెలుగు (Telugu)',
+                                          languageProvider: languageProvider,
+                                        ),
+                                        _buildLanguageOption(
+                                          context: context,
+                                          languageCode: 'en',
+                                          languageName: 'English',
+                                          languageProvider: languageProvider,
+                                        ),
+                                        _buildLanguageOption(
+                                          context: context,
+                                          languageCode: 'hi',
+                                          languageName: 'हिंदी (Hindi)',
+                                          languageProvider: languageProvider,
+                                        ),
+                                        _buildLanguageOption(
+                                          context: context,
+                                          languageCode: 'ta',
+                                          languageName: 'தமிழ் (Tamil)',
+                                          languageProvider: languageProvider,
+                                        ),
+
+                                        const SizedBox(height: 20),
+                                      ],
+                                    ),
+                                  );
+                                },
+                              );
+                            },
+                          );
+                        },
+                        child: const Icon(Icons.translate, size: 24),
+                      ),
                     ),
                     SizedBox(width: 12),
                     Container(
@@ -790,6 +863,64 @@ Consumer<CategoryProvider>(
           ),
         ],
       ),
+    );
+  }
+
+    Widget _buildLanguageOption({
+    required BuildContext context,
+    required String languageCode,
+    required String languageName,
+    required LanguageProvider languageProvider,
+  }) {
+    final isSelected = languageProvider.locale.languageCode == languageCode;
+
+    return ListTile(
+      leading: Icon(
+        Icons.language,
+        color: isSelected ? Colors.blue : Colors.grey,
+      ),
+      title: Text(
+        languageName,
+        style: TextStyle(
+          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+          color: isSelected ? Colors.blue : Colors.black,
+        ),
+      ),
+      trailing: isSelected ? const Icon(Icons.check, color: Colors.blue) : null,
+      onTap: () async {
+        try {
+          // Change the language using your provider
+          await languageProvider.setLocale(Locale(languageCode));
+
+          // Close the modal
+          if (context.mounted) {
+            Navigator.pop(context);
+
+            // Show confirmation with translated message
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                backgroundColor: Colors.green,
+                content: Text(
+                  LocalizationService.translate(
+                      'language_switched', languageCode),
+                ),
+                duration: const Duration(seconds: 2),
+              ),
+            );
+          }
+        } catch (e) {
+          print('Error changing language: $e');
+          if (context.mounted) {
+            Navigator.pop(context);
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Failed to change language'),
+                duration: Duration(seconds: 2),
+              ),
+            );
+          }
+        }
+      },
     );
   }
 }

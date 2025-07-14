@@ -41,6 +41,8 @@ class AuthService {
     required String mobile,
   }) async {
     try {
+            print("rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr${mobile}");
+
       final url = Uri.parse('$baseUrl/users/login');
       final response = await http.post(
         url,
@@ -51,6 +53,8 @@ class AuthService {
           'mobile': mobile,
         }),
       );
+
+      print("rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr${response.body}");
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -63,30 +67,4 @@ class AuthService {
     }
   }
 
-  // Get headers with auth token
-  // static Future<Map<String, String>> getAuthHeaders() async {
-  //   // final token = await SharedPreferencesHelper.getToken();
-  //   return {
-  //     'Content-Type': 'application/json',
-  //     // if (token != null) 'Authorization': 'Bearer $token',
-  //   };
-  // }
-
-  // Validate token (optional - if you have an endpoint for this)
-  // static Future<bool> validateToken() async {
-  //   try {
-  //     // final token = await SharedPreferencesHelper.getToken();
-  //     // if (token == null) return false;
-
-  //     // If you have a token validation endpoint, implement it here
-  //     // final url = Uri.parse('$baseUrl/users/validate');
-  //     // final response = await http.get(url, headers: await getAuthHeaders());
-  //     // return response.statusCode == 200;
-
-  //     // For now, just check if token exists
-  //     return true;
-  //   } catch (e) {
-  //     return false;
-  //   }
-  // }
 }

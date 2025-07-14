@@ -1,270 +1,3 @@
-// import 'package:flutter/material.dart';
-
-// class SignupScreen extends StatefulWidget {
-//   const SignupScreen({super.key});
-
-//   @override
-//   State<SignupScreen> createState() => _SignupScreenState();
-// }
-
-// class _SignupScreenState extends State<SignupScreen> {
-//   final nameController = TextEditingController();
-//   final mobileController = TextEditingController();
-//   final invitationController = TextEditingController();
-
-//   @override
-//   void dispose() {
-//     nameController.dispose();
-//     mobileController.dispose();
-//     invitationController.dispose();
-//     super.dispose();
-//   }
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       backgroundColor: Colors.white,
-//       appBar: AppBar(
-//         backgroundColor: Colors.white,
-//         elevation: 0,
-//         leading: IconButton(
-//           icon: const Icon(Icons.arrow_back_ios, color: Colors.black, size: 20),
-//           onPressed: () => Navigator.pop(context),
-//         ),
-//         title: const Text(
-//           'Back',
-//           style: TextStyle(
-//             color: Colors.black,
-//             fontSize: 16,
-//             fontWeight: FontWeight.normal,
-//           ),
-//         ),
-//         titleSpacing: -10,
-//       ),
-//       body: SingleChildScrollView(
-//         child: Padding(
-//           padding: const EdgeInsets.symmetric(horizontal: 24.0),
-//           child: Column(
-//             crossAxisAlignment: CrossAxisAlignment.center,
-//             children: [
-//               const SizedBox(height: 20),
-
-//               // Center the image using Align
-//               Align(
-//                 alignment: Alignment.center,
-//                 child: SizedBox(
-//                   width: 150,
-//                   height: 173.5,
-//                   child: Image.asset("assets/signup.png"),
-//                 ),
-//               ),
-//               const SizedBox(height: 16),
-
-//               // Title (aligned left)
-//               const Align(
-//                 alignment: Alignment.centerLeft,
-//                 child: Text(
-//                   'Signup Account',
-//                   style: TextStyle(
-//                     fontSize: 36,
-//                     fontWeight: FontWeight.bold,
-//                     color: Colors.black,
-//                   ),
-//                 ),
-//               ),
-//               const SizedBox(height: 8),
-
-//               // Subtitle (aligned left)
-//               const Align(
-//                 alignment: Alignment.centerLeft,
-//                 child: Text(
-//                   'Hello! Let\'s Join with Us',
-//                   style: TextStyle(
-//                     fontSize: 16,
-//                     color: Colors.black54,
-//                   ),
-//                 ),
-//               ),
-//               const SizedBox(height: 20),
-
-//               // Name Field
-//               _buildInputField(
-//                 label: 'Name',
-//                 hint: 'Enter your Name',
-//                 controller: nameController,
-//               ),
-//               const SizedBox(height: 5),
-
-//               // Mobile Number Field
-//               _buildInputField(
-//                 label: 'Mobile Number',
-//                 hint: 'Enter your Mobile Number',
-//                 controller: mobileController,
-//                 keyboardType: TextInputType.phone,
-//               ),
-//               const SizedBox(height: 5),
-
-//               // Invitation Code Field
-//               _buildInputField(
-//                 label: 'Invitation Code ( Optional )',
-//                 hint: 'Enter Invitation Code',
-//                 controller: invitationController,
-//               ),
-//               const SizedBox(height: 20),
-
-//               // Signup Button
-//               SizedBox(
-//                 width: double.infinity,
-//                 height: 50,
-//                 child: ElevatedButton(
-//                   onPressed: () {
-//                     // Handle signup logic
-//                   },
-//                   style: ElevatedButton.styleFrom(
-//                     backgroundColor: const Color(0xFF5E35B1),
-//                     shape: RoundedRectangleBorder(
-//                       borderRadius: BorderRadius.circular(12),
-//                     ),
-//                     elevation: 0,
-//                   ),
-//                   child: const Text(
-//                     'Signup',
-//                     style: TextStyle(
-//                       fontSize: 16,
-//                       fontWeight: FontWeight.bold,
-//                       color: Colors.white,
-//                     ),
-//                   ),
-//                 ),
-//               ),
-//               const SizedBox(height: 20),
-
-//               // Or divider
-//               Row(
-//                 children: [
-//                   Expanded(
-//                     child: Container(
-//                       height: 1,
-//                       color: Colors.grey.withOpacity(0.3),
-//                     ),
-//                   ),
-//                   const Padding(
-//                     padding: EdgeInsets.symmetric(horizontal: 16.0),
-//                     child: Text(
-//                       'Or',
-//                       style: TextStyle(
-//                         color: Colors.grey,
-//                         fontSize: 14,
-//                       ),
-//                     ),
-//                   ),
-//                   Expanded(
-//                     child: Container(
-//                       height: 1,
-//                       color: Colors.grey.withOpacity(0.3),
-//                     ),
-//                   ),
-//                 ],
-//               ),
-//               const SizedBox(height: 15),
-
-//               // Social Login buttons
-//               Row(
-//                 mainAxisAlignment: MainAxisAlignment.center,
-//                 children: [
-//                   _socialLoginButton('assets/icons/google.png', () {}),
-//                   const SizedBox(width: 24),
-//                   _socialLoginButton('assets/icons/facebook.png', () {}),
-//                   const SizedBox(width: 24),
-//                   _socialLoginButton('assets/icons/x.png', () {}),
-//                 ],
-//               ),
-//               const SizedBox(height: 30),
-//             ],
-//           ),
-//         ),
-//       ),
-//     );
-//   }
-
-//   Widget _buildInputField({
-//     required String label,
-//     required String hint,
-//     required TextEditingController controller,
-//     TextInputType keyboardType = TextInputType.text,
-//   }) {
-//     return Column(
-//       crossAxisAlignment: CrossAxisAlignment.start,
-//       children: [
-//         Text(
-//           label,
-//           style: const TextStyle(
-//             fontSize: 14,
-//             fontWeight: FontWeight.w500,
-//             color: Colors.black87,
-//           ),
-//         ),
-//         const SizedBox(height: 8),
-//         TextField(
-//           controller: controller,
-//           keyboardType: keyboardType,
-//           decoration: InputDecoration(
-//             hintText: hint,
-//             hintStyle: const TextStyle(
-//               color: Colors.black38,
-//               fontSize: 14,
-//             ),
-//             filled: true,
-//             fillColor: Colors.grey.withOpacity(0.05),
-//             border: OutlineInputBorder(
-//               borderRadius: BorderRadius.circular(12),
-//               borderSide: BorderSide.none,
-//             ),
-//             contentPadding: const EdgeInsets.symmetric(
-//               horizontal: 16,
-//               vertical: 16,
-//             ),
-//           ),
-//         ),
-//       ],
-//     );
-//   }
-
-//   Widget _socialLoginButton(String assetName, VoidCallback onPressed) {
-//     return InkWell(
-//       onTap: onPressed,
-//       child: Container(
-//         width: 34,
-//         height: 34,
-//         decoration: BoxDecoration(
-//           shape: BoxShape.circle,
-//           border: Border.all(
-//             color: Colors.grey.withOpacity(0.3),
-//             width: 1,
-//           ),
-//         ),
-//         child: Center(
-//           child: Image.asset(
-//             assetName,
-//             width: 24, // Adjust the size based on your needs
-//             height: 24, // Adjust the size based on your needs
-//           ),
-//         ),
-//       ),
-//     );
-//   }
-// }
-
-
-
-
-
-
-
-
-
-
-
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -297,7 +30,7 @@ class _SignupScreenState extends State<SignupScreen> {
     // Listen to auth state changes
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      authProvider.addListener(_handleAuthStateChange);
+      // authProvider.addListener(_handleAuthStateChange);
     });
   }
 
@@ -308,25 +41,25 @@ class _SignupScreenState extends State<SignupScreen> {
     });
   }
 
-  void _handleAuthStateChange() {
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+  // void _handleAuthStateChange() {
+  //   final authProvider = Provider.of<AuthProvider>(context, listen: false);
     
-    if (authProvider.isAuthenticated && mounted) {
-      // User successfully registered, navigate to home
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (context) => const HomeScreen()),
-        (route) => false,
-      );
-    }
-  }
+  //   if (authProvider.isAuthenticated && mounted) {
+  //     // User successfully registered, navigate to home
+  //     Navigator.pushAndRemoveUntil(
+  //       context,
+  //       MaterialPageRoute(builder: (context) => const HomeScreen()),
+  //       (route) => false,
+  //     );
+  //   }
+  // }
 
   @override
   void dispose() {
     nameController.removeListener(_validateForm);
     mobileController.removeListener(_validateForm);
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    authProvider.removeListener(_handleAuthStateChange);
+    // authProvider.removeListener(_handleAuthStateChange);
     nameController.dispose();
     mobileController.dispose();
     invitationController.dispose();
@@ -335,32 +68,38 @@ class _SignupScreenState extends State<SignupScreen> {
 
   bool get _isFormValid => _isValidName && _isValidMobile;
 
-  Future<void> _handleSignup() async {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
-
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    
-    try {
-      final success = await authProvider.register(
-        name: nameController.text.trim(),
-        mobile: mobileController.text.trim(),
-      );
-      
-      if (success) {
-        _showSuccessSnackBar('Account created successfully!');
-                Navigator.push(context, MaterialPageRoute(builder: (context)=>HomeScreen()));
-
-      } else {
-        _showErrorSnackBar(authProvider.errorMessage.isNotEmpty 
-          ? authProvider.errorMessage 
-          : 'Registration failed. Please try again.');
-      }
-    } catch (e) {
-      _showErrorSnackBar('An error occurred. Please try again.');
-    }
+Future<void> _handleSignup() async {
+  if (!_formKey.currentState!.validate()) {
+    return;
   }
+
+  final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+  try {
+    await authProvider.register(
+      name: nameController.text.trim(),
+      mobile: mobileController.text.trim(),
+    );
+
+    if (authProvider.status == AuthStatus.authenticated) {
+      _showSuccessSnackBar('Account created successfully!');
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const HomeScreen()),
+      );
+    } else if (authProvider.status == AuthStatus.error) {
+      _showErrorSnackBar(
+        authProvider.errorMessage?.isNotEmpty == true
+            ? authProvider.errorMessage!
+            : 'Registration failed. Please try again.',
+      );
+    }
+  } catch (e) {
+    _showErrorSnackBar('An unexpected error occurred. Please try again.');
+  }
+}
+
+
 
   void _showErrorSnackBar(String message) {
     if (mounted) {
@@ -529,11 +268,13 @@ class _SignupScreenState extends State<SignupScreen> {
                 // Signup Button with loading state
                 Consumer<AuthProvider>(
                   builder: (context, authProvider, child) {
+                    final isLoading = authProvider.status == AuthStatus.loading;
+
                     return SizedBox(
                       width: double.infinity,
                       height: 50,
                       child: ElevatedButton(
-                        onPressed: authProvider.isLoading || !_isFormValid 
+                        onPressed: isLoading || !_isFormValid 
                           ? null 
                           : _handleSignup,
                         style: ElevatedButton.styleFrom(
@@ -544,7 +285,7 @@ class _SignupScreenState extends State<SignupScreen> {
                           ),
                           elevation: 0,
                         ),
-                        child: authProvider.isLoading
+                        child: isLoading
                           ? const SizedBox(
                               width: 20,
                               height: 20,
@@ -566,46 +307,6 @@ class _SignupScreenState extends State<SignupScreen> {
                   },
                 ),
                 const SizedBox(height: 20),
-
-                // Error message display
-                Consumer<AuthProvider>(
-                  builder: (context, authProvider, child) {
-                    if (authProvider.state == AuthState.error) {
-                      return Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(12),
-                        margin: const EdgeInsets.only(bottom: 20),
-                        decoration: BoxDecoration(
-                          color: Colors.red.shade50,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.red.shade200),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(Icons.error_outline, color: Colors.red.shade600, size: 20),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                authProvider.errorMessage,
-                                style: TextStyle(
-                                  color: Colors.red.shade600,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ),
-                            IconButton(
-                              onPressed: () => authProvider.clearError(),
-                              icon: Icon(Icons.close, color: Colors.red.shade600, size: 16),
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(),
-                            ),
-                          ],
-                        ),
-                      );
-                    }
-                    return const SizedBox.shrink();
-                  },
-                ),
 
                 // Or divider
                 Row(
@@ -639,25 +340,27 @@ class _SignupScreenState extends State<SignupScreen> {
                 // Social Login buttons
                 Consumer<AuthProvider>(
                   builder: (context, authProvider, child) {
+                    final isLoading = authProvider.status == AuthStatus.loading;
+
                     return Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         _socialLoginButton(
                           'assets/icons/google.png', 
-                          authProvider.isLoading ? null : () => _showComingSoonDialog('Google Signup'),
-                          authProvider.isLoading,
+                          isLoading ? null : () => _showComingSoonDialog('Google Signup'),
+                          isLoading,
                         ),
                         const SizedBox(width: 24),
                         _socialLoginButton(
                           'assets/icons/facebook.png', 
-                          authProvider.isLoading ? null : () => _showComingSoonDialog('Facebook Signup'),
-                          authProvider.isLoading,
+                          isLoading ? null : () => _showComingSoonDialog('Facebook Signup'),
+                          isLoading,
                         ),
                         const SizedBox(width: 24),
                         _socialLoginButton(
                           'assets/icons/x.png', 
-                          authProvider.isLoading ? null : () => _showComingSoonDialog('X Signup'),
-                          authProvider.isLoading,
+                          isLoading ? null : () => _showComingSoonDialog('X Signup'),
+                          isLoading,
                         ),
                       ],
                     );
