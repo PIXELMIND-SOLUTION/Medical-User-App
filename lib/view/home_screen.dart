@@ -22,17 +22,34 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
+  String _lastLang = 'en';
+
 
   @override
   void initState() {
     super.initState();
     // Fetch services when the screen loads
+      final langCode = Provider.of<LanguageProvider>(context).locale.languageCode;
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<ServiceProvider>().fetchAllServices();
-      context.read<CategoryProvider>().fetchCategories(serviceName: "");
+      context.read<CategoryProvider>().fetchCategories(serviceName: "",languageCode: langCode);
       context.read<MedicineProvider>().loadMedicines();
     });
   }
+
+  @override
+void didChangeDependencies() {
+  super.didChangeDependencies();
+
+  final langCode = Provider.of<LanguageProvider>(context).locale.languageCode;
+  final categoryProvider = Provider.of<CategoryProvider>(context, listen: false);
+
+  if (_lastLang != langCode) {
+    _lastLang = langCode;
+    categoryProvider.loadAllCategories(langCode);
+  }
+}
 
   // Method to show bottom modal with medicine details
   void _showMedicineDetailsModal(
@@ -160,12 +177,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                           languageName: 'हिंदी (Hindi)',
                                           languageProvider: languageProvider,
                                         ),
-                                        _buildLanguageOption(
-                                          context: context,
-                                          languageCode: 'ta',
-                                          languageName: 'தமிழ் (Tamil)',
-                                          languageProvider: languageProvider,
-                                        ),
 
                                         const SizedBox(height: 20),
                                       ],
@@ -199,7 +210,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     Expanded(
                       child: TextField(
                         decoration: InputDecoration(
-                          hintText: 'Search your Medicine',
+                          hintText:
+                              AppText.translate(context, 'search_medicine'),
                           prefixIcon: Icon(Icons.search, color: Colors.grey),
                           contentPadding: EdgeInsets.symmetric(vertical: 12),
                           border: OutlineInputBorder(
@@ -267,8 +279,8 @@ class _HomeScreenState extends State<HomeScreen> {
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  "Order your Medicine!",
+                                AppText(
+                                  "order_medicine",
                                   style: TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.bold,
@@ -277,8 +289,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                   ),
                                 ),
                                 SizedBox(height: 8),
-                                Text(
-                                  "We deliver medicines at your\ndoorstep in no time",
+                                AppText(
+                                  "delivery_line",
                                   style: TextStyle(
                                     fontSize: 14,
                                     color: Color(0XFF000000),
@@ -300,7 +312,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   borderRadius: BorderRadius.circular(20),
                                 ),
                               ),
-                              child: Text("Order Now"),
+                              child: AppText("order_now"),
                             ),
                           ],
                         ),
@@ -333,8 +345,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 const Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      "Services",
+                    AppText(
+                      "services",
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -453,8 +465,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
-                      "Categories",
+                    const AppText(
+                      "categories",
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -462,8 +474,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     Row(
                       children: [
-                        Text(
-                          "See All",
+                        AppText(
+                          "see_all",
                           style: TextStyle(
                             fontSize: 14,
                             color: Colors.grey[600], // gray color
@@ -485,58 +497,73 @@ class _HomeScreenState extends State<HomeScreen> {
                 const SizedBox(height: 16),
 
                 // Category icons row
-Consumer<CategoryProvider>(
-  builder: (context, categoryProvider, child) {
-    // Debug prints
-    print("=== Debug Info ===");
-    print("isShowingAllCategories: ${categoryProvider.isShowingAllCategories}");
-    print("selectedServiceName: '${categoryProvider.selectedServiceName}'");
-    print("==================");
-    
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4.0),
-            child: GestureDetector(
-              onTap: () {
-                print("Tapped All button");
-                categoryProvider.loadAllCategories();
-              },
-              child: _buildCategoryItem(
-                imagePath: 'assets/icons/all.png',
-                label: "All",
-                isSelected: categoryProvider.isShowingAllCategories,
-              ),
-            ),
-          ),
-          ...categoryProvider.categories.map((category) {
-            bool isSelected = categoryProvider.selectedServiceName == category.serviceName;
-            print("Category: ${category.categoryName}, Service: ${category.serviceName}, Selected: $isSelected");
-            
-            return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4.0),
-              child: GestureDetector(
-                onTap: () {
-                  print("Tapped category: ${category.categoryName}, Service: ${category.serviceName}");
-                  categoryProvider.loadCategoriesByService(category.serviceName);
-                },
-                child: _buildCategoryItem(
-                  imagePath: category.image.isNotEmpty
-                      ? category.image
-                      : 'assets/icons/default_category.png',
-                  label: category.categoryName,
-                  isSelected: isSelected,
+                Consumer<CategoryProvider>(
+                  builder: (context, categoryProvider, child) {
+                    // Debug prints
+                    print("=== Debug Info ===");
+                    print(
+                        "isShowingAllCategories: ${categoryProvider.isShowingAllCategories}");
+                    print(
+                        "selectedServiceName: '${categoryProvider.selectedServiceName}'");
+                    print("==================");
+
+                    return SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          Padding(
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 4.0),
+                            child: GestureDetector(
+                              onTap: () {
+                                print("Tapped All button");
+                                final langCode = Provider.of<LanguageProvider>(
+                                        context,
+                                        listen: false)
+                                    .locale
+                                    .languageCode;
+                                categoryProvider.loadAllCategories(langCode);
+                              },
+                              child: _buildCategoryItem(
+                                imagePath: 'assets/icons/all.png',
+                                label: "All",
+                                isSelected:
+                                    categoryProvider.isShowingAllCategories,
+                              ),
+                            ),
+                          ),
+                          ...categoryProvider.categories.map((category) {
+                            bool isSelected =
+                                categoryProvider.selectedServiceName ==
+                                    category.serviceName;
+                            print(
+                                "Category: ${category.categoryName}, Service: ${category.serviceName}, Selected: $isSelected");
+
+                            return Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 4.0),
+                              child: GestureDetector(
+                                onTap: () {
+                                  print(
+                                      "Tapped category: ${category.categoryName}, Service: ${category.serviceName}");
+                                  categoryProvider.loadCategoriesByService(
+                                      category.serviceName,_lastLang);
+                                },
+                                child: _buildCategoryItem(
+                                  imagePath: category.image.isNotEmpty
+                                      ? category.image
+                                      : 'assets/icons/default_category.png',
+                                  label: category.categoryName,
+                                  isSelected: isSelected,
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        ],
+                      ),
+                    );
+                  },
                 ),
-              ),
-            );
-          }).toList(),
-        ],
-      ),
-    );
-  },
-),
 
                 SizedBox(height: 24),
 
@@ -582,8 +609,8 @@ Consumer<CategoryProvider>(
                                 ),
                               ),
                               const SizedBox(width: 8),
-                              Text(
-                                "Your Order will be\ndelivery in 10 min.",
+                              AppText(
+                                "order_eta",
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 14,
@@ -602,19 +629,19 @@ Consumer<CategoryProvider>(
                               // Order Placed
                               _buildStepItem(
                                 imagePath: 'assets/icons/cart.png',
-                                label: 'Order\nPlaced',
+                                label: 'order_placed',
                               ),
 
                               // Order Pickup
                               _buildStepItem(
                                 imagePath: 'assets/icons/pickup.png',
-                                label: 'Order\nPickup',
+                                label: 'order_pickup',
                               ),
 
                               // Order Delivery (active)
                               _buildStepItem(
                                 imagePath: 'assets/icons/order.png',
-                                label: 'Order\nDelivery',
+                                label: 'order_delivery',
                               ),
                             ],
                           ),
@@ -624,8 +651,8 @@ Consumer<CategoryProvider>(
                       Positioned(
                         top: 0,
                         right: 0,
-                        child: Text(
-                          "Updated 6 sec ago",
+                        child: AppText(
+                          "updated_ago",
                           style: TextStyle(
                             fontSize: 12,
                             color: Colors.grey[600],
@@ -641,8 +668,8 @@ Consumer<CategoryProvider>(
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
-                      "Previous Orders",
+                    const AppText(
+                      "previous_orders",
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -650,8 +677,8 @@ Consumer<CategoryProvider>(
                     ),
                     Row(
                       children: [
-                        Text(
-                          "See All",
+                        AppText(
+                          "see_all",
                           style: TextStyle(
                             fontSize: 14,
                             color: Colors.grey[600], // gray color
@@ -686,15 +713,15 @@ Consumer<CategoryProvider>(
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      "All Medicines",
+                    AppText(
+                      "all_medicines",
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    Text(
-                      "Filter",
+                    AppText(
+                      "filter",
                       style: TextStyle(
                         fontSize: 14,
                         color: Color(0xFF5931DD),
@@ -855,7 +882,7 @@ Consumer<CategoryProvider>(
                       borderRadius: BorderRadius.circular(8),
                     ),
                   ),
-                  child: const Text('Add On',
+                  child: const AppText('add_on',
                       style: TextStyle(color: Colors.white)),
                 ),
               ],
@@ -866,7 +893,7 @@ Consumer<CategoryProvider>(
     );
   }
 
-    Widget _buildLanguageOption({
+  Widget _buildLanguageOption({
     required BuildContext context,
     required String languageCode,
     required String languageName,
@@ -951,7 +978,7 @@ Widget _buildStepItem({
         ),
       ),
       const SizedBox(height: 6),
-      Text(
+      AppText(
         label,
         textAlign: TextAlign.center,
         style: TextStyle(
@@ -1061,7 +1088,7 @@ Widget _buildServicesItem({
 }) {
   return GestureDetector(
     onTap: () {
-      _categoryFilter(serviceName: label);
+      // _categoryFilter(serviceName: label);
     },
     child: Container(
       width: 90,
@@ -1110,15 +1137,15 @@ Widget _buildServicesItem({
   );
 }
 
-void _categoryFilter({required String serviceName}) {
-  print('oooooooooooooooooooooooooooooooo$serviceName');
-  try {
-    CategoryProvider categoryProvider = CategoryProvider();
-    categoryProvider.fetchCategories(serviceName: serviceName);
-  } catch (e) {
-    print("Errrrrrrrrrrrrrrrrrrrrrrrrrrrr$e");
-  }
-}
+// void _categoryFilter({required String serviceName}) {
+//   print('oooooooooooooooooooooooooooooooo$serviceName');
+//   try {
+//     CategoryProvider categoryProvider = CategoryProvider();
+//     categoryProvider.fetchCategories(serviceName: serviceName,languageCode: langCode);
+//   } catch (e) {
+//     print("Errrrrrrrrrrrrrrrrrrrrrrrrrrrr$e");
+//   }
+// }
 
 // Medicine Details Modal Widget
 class MedicineDetailsModal extends StatelessWidget {
@@ -1170,8 +1197,8 @@ class MedicineDetailsModal extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  'Periodic Meds Plan',
+                const AppText(
+                  'periodic_plan',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -1195,7 +1222,7 @@ class MedicineDetailsModal extends StatelessWidget {
               ),
               child: TextField(
                 decoration: InputDecoration(
-                  hintText: 'Search your Medicine',
+                  hintText: AppText.translate(context, 'search_medicine'),
                   prefixIcon: const Icon(Icons.search, color: Colors.grey),
                   suffixIcon: Container(
                     margin: const EdgeInsets.all(5),
@@ -1307,8 +1334,8 @@ class MedicineDetailsModal extends StatelessWidget {
                   borderRadius: BorderRadius.circular(25),
                 ),
               ),
-              child: const Text(
-                'Continue',
+              child: const AppText(
+                'continue',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,

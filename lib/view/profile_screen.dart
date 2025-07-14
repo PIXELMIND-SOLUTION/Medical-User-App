@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:medical_user_app/providers/auth_provider.dart';
+import 'package:medical_user_app/providers/language_provider.dart';
 import 'package:medical_user_app/view/change_address_screen.dart';
+import 'package:medical_user_app/view/login_screen.dart';
 import 'package:medical_user_app/view/order_hystory_screen.dart';
 import 'package:medical_user_app/view/personal_information_screen.dart';
+import 'package:provider/provider.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({Key? key}) : super(key: key);
@@ -34,8 +38,8 @@ class ProfileScreen extends StatelessWidget {
                   ),
                   const SizedBox(width: 12),
                   // Profile Text
-                  const Text(
-                    'Profile',
+                  const AppText(
+                    'profile',
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
@@ -47,8 +51,8 @@ class ProfileScreen extends StatelessWidget {
               const SizedBox(height: 16),
 
               // Account Text
-              Text(
-                'Account',
+              AppText(
+                'account',
                 style: TextStyle(
                   fontSize: 14,
                   color: Colors.blue[700],
@@ -61,19 +65,21 @@ class ProfileScreen extends StatelessWidget {
               // Personal Information
               _buildMenuTile(
                 context: context,
-                title: 'Personal Information',
+                title: 'personal_information',
                 icon: Icons.person_outline,
                 iconColor: Colors.blue[700],
                 onTap: () {
-                  Navigator.push(context,
-                      MaterialPageRoute(builder: (_) => PersonalInformationScreen()));
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => PersonalInformationScreen()));
                 },
               ),
 
               // Change Address
               _buildMenuTile(
                 context: context,
-                title: 'Change Address',
+                title: 'change_address',
                 icon: Icons.location_on_outlined,
                 iconColor: Colors.grey[600],
                 onTap: () {
@@ -85,7 +91,7 @@ class ProfileScreen extends StatelessWidget {
               // Order History
               _buildMenuTile(
                 context: context,
-                title: 'Order History',
+                title: 'order_history',
                 icon: Icons.history,
                 iconColor: Colors.grey[600],
                 onTap: () {
@@ -97,7 +103,7 @@ class ProfileScreen extends StatelessWidget {
               // Periodic Meds Plan
               _buildMenuTile(
                 context: context,
-                title: 'Periodic Meds Plan',
+                title: 'periodic_plan',
                 icon: Icons.calendar_today_outlined,
                 iconColor: Colors.grey[600],
                 onTap: () {},
@@ -106,8 +112,8 @@ class ProfileScreen extends StatelessWidget {
               const SizedBox(height: 16),
 
               // Account Text (second)
-              Text(
-                'Account',
+              AppText(
+                'account',
                 style: TextStyle(
                   fontSize: 14,
                   color: Colors.grey[700],
@@ -120,7 +126,7 @@ class ProfileScreen extends StatelessWidget {
               // Need Help?
               _buildMenuTile(
                 context: context,
-                title: 'Need Help?',
+                title: 'need_help',
                 icon: Icons.help_outline,
                 iconColor: Colors.grey[600],
                 onTap: () {},
@@ -129,7 +135,7 @@ class ProfileScreen extends StatelessWidget {
               // Contact Us
               _buildMenuTile(
                 context: context,
-                title: 'Contact Us',
+                title: 'contact_us',
                 icon: Icons.phone_outlined,
                 iconColor: Colors.grey[600],
                 onTap: () {},
@@ -138,11 +144,19 @@ class ProfileScreen extends StatelessWidget {
               // Logout
               _buildMenuTile(
                 context: context,
-                title: 'Logout',
+                title: 'logout',
                 icon: Icons.logout,
                 iconColor: Colors.red,
                 titleColor: Colors.red,
-                onTap: () {},
+                onTap: () async {
+                  await Provider.of<AuthProvider>(context, listen: false)
+                      .logout();
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (_) => LoginScreen()),
+                    (route) => false, // This removes all previous routes
+                  );
+                },
               ),
             ],
           ),
@@ -172,7 +186,7 @@ class ProfileScreen extends StatelessWidget {
           color: iconColor ?? Colors.grey[600],
           size: 22,
         ),
-        title: Text(
+        title: AppText(
           title,
           style: TextStyle(
             fontSize: 14,

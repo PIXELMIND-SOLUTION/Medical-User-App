@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:medical_user_app/providers/language_provider.dart';
 
 class PersonalInformationScreen extends StatefulWidget {
   const PersonalInformationScreen({Key? key}) : super(key: key);
@@ -33,8 +34,8 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
-        title: const Text(
-          'Personal Information',
+        title: const AppText(
+          'personal_information',
           style: TextStyle(
               color: Colors.black, fontWeight: FontWeight.bold, fontSize: 20),
         ),
@@ -101,7 +102,7 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
               TextField(
                 controller: _nameController,
                 decoration: InputDecoration(
-                  labelText: 'Name',
+                  labelText:  AppText.translate(context, 'name'),
                   labelStyle: const TextStyle(
                     fontSize: 13,
                     color: Colors.black87,
@@ -132,7 +133,7 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
                 controller: _mobileController,
                 keyboardType: TextInputType.phone,
                 decoration: InputDecoration(
-                  labelText: 'Mobile Number',
+                  labelText: AppText.translate(context, 'mobile_number'),
                   labelStyle: const TextStyle(
                     fontSize: 13,
                     color: Colors.black87,
@@ -163,7 +164,7 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
                 controller: _emailController,
                 keyboardType: TextInputType.emailAddress,
                 decoration: InputDecoration(
-                  labelText: 'Email',
+                  labelText: AppText.translate(context, 'email'),
                   labelStyle: const TextStyle(
                     fontSize: 13,
                     color: Colors.black87,
@@ -205,8 +206,8 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                   ),
-                  child: const Text(
-                    'Save',
+                  child: const AppText(
+                    'save',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,

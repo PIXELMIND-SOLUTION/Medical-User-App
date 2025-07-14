@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:medical_user_app/providers/language_provider.dart';
 
 class OrdersHistoryScreen extends StatelessWidget {
   const OrdersHistoryScreen({Key? key}) : super(key: key);
@@ -11,8 +12,8 @@ class OrdersHistoryScreen extends StatelessWidget {
         backgroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
-        title: const Text(
-          'Order Hystory',
+        title: const AppText(
+          'order_history',
           style: TextStyle(
               color: Colors.black, fontWeight: FontWeight.bold, fontSize: 20),
         ),
@@ -35,8 +36,8 @@ class OrdersHistoryScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Ongoing Orders section
-            const Text(
-              'Ongoing',
+            const AppText(
+              'ongoing',
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
@@ -49,8 +50,8 @@ class OrdersHistoryScreen extends StatelessWidget {
             const SizedBox(height: 24),
             
             // Previous Orders section
-            const Text(
-              'Previous Orders',
+            const AppText(
+              'previous_orders',
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
@@ -171,8 +172,8 @@ Widget _buildOngoingOrderCard() {
                       ),
                       padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
-                    child: const Text(
-                      'Cancel Order',
+                    child: const AppText(
+                      'cancel_order',
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
@@ -193,8 +194,8 @@ Widget _buildOngoingOrderCard() {
                       ),
                       padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
-                    child: const Text(
-                      'Navigate',
+                    child: const AppText(
+                      'navigate',
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
@@ -347,8 +348,8 @@ Widget _buildOngoingOrderCard() {
                   ),
                   padding: const EdgeInsets.symmetric(vertical: 12),
                 ),
-                child: const Text(
-                  'Re-Order',
+                child: const AppText(
+                  'reorder',
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:medical_user_app/providers/language_provider.dart';
 import 'package:medical_user_app/view/near_pharmacy_screen.dart';
 import 'package:medical_user_app/view/payment_screen.dart';
 import 'package:medical_user_app/widgets/bottom_navigation.dart';
@@ -50,8 +51,8 @@ class _CartScreenState extends State<CartScreen> {
                             SizedBox(
                               width: 10,
                             ),
-                            Text(
-                              "My Cart",
+                            AppText(
+                              "my_cart",
                               style: TextStyle(
                                   fontSize: 20, fontWeight: FontWeight.bold),
                             )
@@ -218,8 +219,8 @@ class _CartScreenState extends State<CartScreen> {
                     fontSize: 14,
                   ),
                 ),
-                Text(
-                  'Qty: ${medication["quantity"]}',
+                AppText(
+                  'qty: ${medication["quantity"]}',
                   style: TextStyle(
                     fontSize: 12,
                     color: Colors.grey.shade600,
@@ -389,8 +390,8 @@ class _CartScreenState extends State<CartScreen> {
         children: [
           Expanded(
             child: TextField(
-              decoration: const InputDecoration(
-                hintText: 'Enter Coupon Code',
+              decoration:  InputDecoration(
+                hintText: AppText.translate(context, 'enter_coupon'),
                 border: InputBorder.none,
               ),
             ),
@@ -431,8 +432,8 @@ class _CartScreenState extends State<CartScreen> {
               borderRadius: BorderRadius.circular(8),
             ),
           ),
-          child: const Text(
-            'Checkout',
+          child: const AppText(
+            'checkout',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -489,15 +490,15 @@ Widget _buildCheckoutContainer() {
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildPriceRow('Total Items', '03'),
+        _buildPriceRow('total_items', '03'),
         const SizedBox(height: 8),
-        _buildPriceRow('Sub Total', '₹225.00'),
+        _buildPriceRow('sub_total', '₹225.00'),
         const SizedBox(height: 8),
-        _buildPriceRow('Platform fee', '₹10.00'),
+        _buildPriceRow('platform_fee', '₹10.00'),
         const SizedBox(height: 8),
-        _buildPriceRow('Delivery charge', '₹22.00'),
+        _buildPriceRow('delivery_charge', '₹22.00'),
         const Divider(height: 24, thickness: 1),
-        _buildPriceRow('Total Payable', '₹247.00',
+        _buildPriceRow('total_payable', '₹247.00',
             isTotal: true), // Highlighted row
       ],
     ),
@@ -508,7 +509,7 @@ Widget _buildPriceRow(String label, String value, {bool isTotal = false}) {
   return Row(
     mainAxisAlignment: MainAxisAlignment.spaceBetween,
     children: [
-      Text(
+      AppText(
         label,
         style: TextStyle(
           fontSize: 14,

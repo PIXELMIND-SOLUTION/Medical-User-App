@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:medical_user_app/providers/language_provider.dart';
 import 'package:medical_user_app/view/cart_screen.dart';
 import 'package:medical_user_app/view/checkout_screen.dart';
 import 'package:medical_user_app/view/home_screen.dart';
@@ -149,8 +150,8 @@ class _MainLayoutState extends State<MainLayout> {
                                   : Colors.grey,
                             ),
                             const SizedBox(height: 4),
-                            Text(
-                              'Home',
+                            AppText(
+                              'home',
                               style: TextStyle(
                                 color: _selectedIndex == 0
                                     ? const Color(0XFF5931DD)
@@ -182,8 +183,8 @@ class _MainLayoutState extends State<MainLayout> {
                                   : Colors.grey,
                             ),
                             const SizedBox(height: 4),
-                            Text(
-                              'Cart',
+                            AppText(
+                              'cart',
                               style: TextStyle(
                                 color: _selectedIndex == 1
                                     ? const Color(0XFF5931DD)

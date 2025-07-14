@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:medical_user_app/providers/language_provider.dart';
 
 class PeriodicMedsPlanCardSimple extends StatelessWidget {
   const PeriodicMedsPlanCardSimple({Key? key}) : super(key: key);
@@ -56,16 +57,16 @@ class PeriodicMedsPlanCardSimple extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  "Periodic Meds",
+                const AppText(
+                  "periodic_meds",
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 const SizedBox(height: 2),
-                const Text(
-                  "Plan",
+                const AppText(
+                  "plan",
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
@@ -89,8 +90,8 @@ class PeriodicMedsPlanCardSimple extends StatelessWidget {
                             borderRadius: BorderRadius.circular(24),
                           ),
                         ),
-                        child: const Text(
-                          "Activate",
+                        child: const AppText(
+                          "activate",
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w500,
@@ -115,8 +116,8 @@ class PeriodicMedsPlanCardSimple extends StatelessWidget {
                           backgroundColor: Colors.white,
                           elevation: 0,
                         ),
-                        child: const Text(
-                          "Details",
+                        child: const AppText(
+                          "details",
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w500,

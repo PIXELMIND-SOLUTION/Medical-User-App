@@ -217,6 +217,7 @@ class CategoryProvider with ChangeNotifier {
   bool _isLoading = false;
   String _errorMessage = '';
   String _selectedServiceName = '';
+  String _lastLoadedLanguage = 'en';
 
   // Getters
   List<Category> get categories => _categories;
@@ -226,64 +227,54 @@ class CategoryProvider with ChangeNotifier {
   bool get hasError => _errorMessage.isNotEmpty;
   bool get isShowingAllCategories => _selectedServiceName.isEmpty;
 
-  /// Fetch categories from the API
-  // Future<void> fetchCategories({String? serviceName}) async {
-  //   _setLoading(true);
-  //   _clearError();
-    
-  //   try {
-  //     final CategoryResponse response = await _categoryService.getAllCategories(serviceName: serviceName);
-  //     _categories = response.categories;
-  //     _selectedServiceName = serviceName ?? '';
-      
-  //     _setLoading(false);
-  //     notifyListeners();
-  //   } on CategoryException catch (e) {
-  //     _setError(e.message);
-  //     _setLoading(false);
-  //   } catch (e) {
-  //     _setError('An unexpected error occurred: ${e.toString()}');
-  //     _setLoading(false);
-  //   }
-  // }
-
-  // /// Load all categories (clear service filter)
-  // Future<void> loadAllCategories() async {
-  //   await fetchCategories(serviceName: null);
-  // }
-
-  // /// Load categories for a specific service
-  // Future<void> loadCategoriesByService(String serviceName) async {
-  //   await fetchCategories(serviceName: serviceName);
-  // }
-
 
   /// Load all categories (clear service filter)
-Future<void> loadAllCategories() async {
+Future<void> loadAllCategories(String languageCode) async {
   print("loadAllCategories called");
   _selectedServiceName = ''; // Clear selection BEFORE fetching
-  await fetchCategories(serviceName: null);
+  await fetchCategories(serviceName: null, languageCode: languageCode);
   print("After loadAllCategories - selectedServiceName: '$_selectedServiceName'");
 }
 
 /// Load categories for a specific service
-Future<void> loadCategoriesByService(String serviceName) async {
+Future<void> loadCategoriesByService(String serviceName, String languageCode) async {
   print("loadCategoriesByService called with: $serviceName");
   _selectedServiceName = serviceName; // Set selection BEFORE fetching
-  await fetchCategories(serviceName: serviceName);
+  await fetchCategories(serviceName: serviceName, languageCode: languageCode);
   print("After loadCategoriesByService - selectedServiceName: '$_selectedServiceName'");
 }
 
 /// Fetch categories from the API
-Future<void> fetchCategories({String? serviceName}) async {
+Future<void> fetchCategories({String? serviceName,required String languageCode,}) async {
   _setLoading(true);
   _clearError();
   
-  try {
-    final CategoryResponse response = await _categoryService.getAllCategories(serviceName: serviceName);
-    _categories = response.categories;
-    // Don't override _selectedServiceName here since we set it in the calling methods
+  // try {
+  //   final CategoryResponse response = await _categoryService.getAllCategories(serviceName: serviceName);
+  //   _categories = response.categories;
+  //   // Don't override _selectedServiceName here since we set it in the calling methods
     
+  //   _setLoading(false);
+  //   notifyListeners();
+  // } on CategoryException catch (e) {
+  //   _setError(e.message);
+  //   _setLoading(false);
+  // } catch (e) {
+  //   _setError('An unexpected error occurred: ${e.toString()}');
+  //   _setLoading(false);
+  // }
+
+    try {
+    // Don't call API again if same language and already loaded
+    if (_lastLoadedLanguage != languageCode || _categories.isEmpty) {
+      final response = await _categoryService.getAllCategories(
+        serviceName: serviceName,
+        languageCode: languageCode, // <-- you'll pass this in service call
+      );
+      _categories = response.categories;
+      _lastLoadedLanguage = languageCode;
+    }
+
     _setLoading(false);
     notifyListeners();
   } on CategoryException catch (e) {

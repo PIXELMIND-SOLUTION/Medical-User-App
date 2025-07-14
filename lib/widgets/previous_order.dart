@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:medical_user_app/providers/language_provider.dart';
 
 class MedicationOrdersList extends StatelessWidget {
   const MedicationOrdersList({Key? key}) : super(key: key);
@@ -157,8 +158,8 @@ class MedicationOrdersList extends StatelessWidget {
                             ),
                             padding: EdgeInsets.symmetric(vertical: 12),
                           ),
-                          child: Text(
-                            'Re-Order',
+                          child: AppText(
+                            'reorder',
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
                             ),
@@ -178,8 +179,8 @@ class MedicationOrdersList extends StatelessWidget {
                             ),
                             padding: EdgeInsets.symmetric(vertical: 12),
                           ),
-                          child: Text(
-                            'Details',
+                          child: AppText(
+                            'details',
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
                             ),

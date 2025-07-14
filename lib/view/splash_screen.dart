@@ -1,6 +1,7 @@
 
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:medical_user_app/providers/language_provider.dart';
 import 'package:medical_user_app/utils/shared_preferences_helper.dart';
 import 'package:medical_user_app/view/main_layout.dart';
 import 'package:provider/provider.dart';
@@ -39,13 +40,15 @@ void _navigateToNextScreen(String token) {
 
   print("lllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllll$token");
 
-  if (token!="") {
-    // User is logged in, navigate to home
+  if (token != "null" && token.trim().isNotEmpty) {
+    // Valid token → go to MainLayout
     nextScreen = const MainLayout();
   } else {
-    // User is not logged in, navigate to onboarding
+    // Invalid token → go to Onboarding
     nextScreen = const OnboardingScreen();
   }
+
+
 
   Navigator.pushReplacement(
     context,
@@ -77,8 +80,8 @@ void _navigateToNextScreen(String token) {
               ),
               const SizedBox(height: 40),
               // Welcome Text
-              const Text(
-                'Welcome',
+              const AppText(
+                'welcome',
                 style: TextStyle(
                   fontSize: 40,
                   fontWeight: FontWeight.bold,
@@ -86,8 +89,8 @@ void _navigateToNextScreen(String token) {
               ),
               const SizedBox(height: 10),
               // Slogan Text
-              const Text(
-                'Your Health Is Our Priority',
+              const AppText(
+                'slogan',
                 style: TextStyle(
                   fontSize: 20,
                   color: Colors.grey,

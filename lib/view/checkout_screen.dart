@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:medical_user_app/providers/language_provider.dart';
 import 'package:medical_user_app/view/near_pharmacy_screen.dart';
 import 'package:medical_user_app/widgets/bottom_navigation.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
@@ -541,8 +542,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               borderRadius: BorderRadius.circular(8),
             ),
           ),
-          child: const Text(
-            'Checkout',
+          child: const AppText(
+            'checkout',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
