@@ -2,10 +2,11 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
+import 'package:medical_user_app/constant/api_constants.dart';
 import '../models/category_model.dart';
 
 class CategoryService {
-  static const String baseUrl = 'http://194.164.148.244:7021/api/category';
+  // static const String baseUrl = 'http://194.164.148.244:7021/api/category';
   static const Duration timeoutDuration = Duration(seconds: 30);
 
   Future<CategoryResponse> getAllCategories({
@@ -16,11 +17,11 @@ class CategoryService {
       Uri uri;
 
       if (serviceName != null && serviceName.isNotEmpty) {
-        uri = Uri.parse('$baseUrl/allcategories').replace(
+        uri = Uri.parse(ApiConstants.allCategories).replace(
           queryParameters: {'serviceName': serviceName.toLowerCase()},
         );
       } else {
-        uri = Uri.parse('$baseUrl/allcategories');
+        uri = Uri.parse(ApiConstants.allCategories);
       }
 
       final response = await http.get(

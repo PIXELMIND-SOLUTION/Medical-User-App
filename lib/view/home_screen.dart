@@ -1,17 +1,36 @@
+// ignore_for_file: deprecated_member_use, use_build_context_synchronously
+
 import 'package:flutter/material.dart';
 import 'package:medical_user_app/models/medicine_model.dart';
+import 'package:medical_user_app/models/user_model.dart';
 import 'package:medical_user_app/providers/category_provider.dart';
 import 'package:medical_user_app/providers/language_provider.dart';
+import 'package:medical_user_app/providers/location_provider.dart';
 import 'package:medical_user_app/providers/medicine_provider.dart';
+import 'package:medical_user_app/providers/notification_provider.dart';
+import 'package:medical_user_app/providers/profile_provider.dart';
 import 'package:medical_user_app/providers/services_provider.dart';
+import 'package:medical_user_app/utils/shared_preferences_helper.dart';
+import 'package:medical_user_app/view/category_screen.dart';
 import 'package:medical_user_app/view/checkout_screen.dart';
+import 'package:medical_user_app/view/near_pharmacy_screen.dart';
+import 'package:medical_user_app/view/notification_screen.dart';
+import 'package:medical_user_app/view/order_hystory_screen.dart';
 import 'package:medical_user_app/view/profile_screen.dart';
+import 'package:medical_user_app/view/scanned_medicine_screen.dart';
+import 'package:medical_user_app/view/search/search_screen.dart';
+import 'package:medical_user_app/view/search/user_location_screen.dart';
 import 'package:medical_user_app/widgets/all_medicines.dart';
 import 'package:medical_user_app/widgets/bottom_navigation.dart';
-import 'package:medical_user_app/widgets/periodic_plans.dart';
+import 'package:medical_user_app/widgets/courosel_widget.dart';
+import 'package:medical_user_app/widgets/order_widget.dart';
+import 'package:medical_user_app/widgets/periodic_plans.dart' hide Pharmacy;
 import 'package:medical_user_app/widgets/previous_order.dart';
-import 'package:medical_user_app/widgets/progress_bar.dart';
 import 'package:provider/provider.dart';
+import 'package:pull_to_refresh/pull_to_refresh.dart' hide RefreshIndicator;
+import 'package:speech_to_text/speech_to_text.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -21,57 +40,370 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  final RefreshController _refreshController = RefreshController();
+  bool _isRefreshing = false;
+
+  SpeechToText _speechToText = SpeechToText();
+  bool _speechEnabled = false;
+  bool _isListening = false;
+  String _lastWords = '';
+  final TextEditingController _searchController = TextEditingController();
   int _selectedIndex = 0;
   String _lastLang = 'en';
+  String? userId;
+  bool isLoading = true;
 
+  bool _isLoadingCurrentLocation = false;
 
   @override
   void initState() {
+    _loadUserId();
     super.initState();
-    // Fetch services when the screen loads
-      final langCode = Provider.of<LanguageProvider>(context).locale.languageCode;
+    _initSpeech();
+    _handleRefresh();
+    _handleCurrentLocation();
+    Future.microtask(() {
+      final profileProvider =
+          Provider.of<ProfileProvider>(context, listen: false);
+      profileProvider.initializeUser();
+      profileProvider.fetchUserProfile();
+    });
 
+    // Use addPostFrameCallback to access Provider after the widget tree is built
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      final langCode = Provider.of<LanguageProvider>(context, listen: false)
+          .locale
+          .languageCode;
+
+      // Fetch services when the screen loads
       context.read<ServiceProvider>().fetchAllServices();
-      context.read<CategoryProvider>().fetchCategories(serviceName: "",languageCode: langCode);
+      context
+          .read<CategoryProvider>()
+          .fetchCategories(serviceName: "", languageCode: langCode);
       context.read<MedicineProvider>().loadMedicines();
     });
   }
 
-  @override
-void didChangeDependencies() {
-  super.didChangeDependencies();
+  Future<void> _handleRefresh() async {
+    if (_isRefreshing) return;
 
-  final langCode = Provider.of<LanguageProvider>(context).locale.languageCode;
-  final categoryProvider = Provider.of<CategoryProvider>(context, listen: false);
+    setState(() {
+      _isRefreshing = true;
+    });
 
-  if (_lastLang != langCode) {
-    _lastLang = langCode;
-    categoryProvider.loadAllCategories(langCode);
+    try {
+      // Refresh all necessary data
+      await _refreshAllData();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Page refreshed successfully'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Refresh failed: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isRefreshing = false;
+        });
+      }
+    }
   }
-}
 
-  // Method to show bottom modal with medicine details
-  void _showMedicineDetailsModal(
-    BuildContext context, {
-    required String name,
-    required String description,
-    required String price,
-    required String location,
-    required String imagePath,
-  }) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => MedicineDetailsModal(
-        name: name,
-        description: description,
-        price: price,
-        location: location,
-        imagePath: imagePath,
+  Future<void> _refreshAllData() async {
+    try {
+      // Refresh user data
+      await _loadUserId();
+
+      // Refresh location
+      await _handleCurrentLocation();
+
+      // Refresh profile
+      final profileProvider =
+          Provider.of<ProfileProvider>(context, listen: false);
+      await profileProvider.initializeUser();
+
+      // Refresh services, categories, and medicines
+      final langCode = Provider.of<LanguageProvider>(context, listen: false)
+          .locale
+          .languageCode;
+
+      await context.read<ServiceProvider>().fetchAllServices();
+      await context
+          .read<CategoryProvider>()
+          .fetchCategories(serviceName: "", languageCode: langCode);
+      await context.read<MedicineProvider>().loadMedicines();
+
+      // Refresh notifications if needed
+      await context
+          .read<NotificationProvider>()
+          .loadNotifications(userId.toString());
+    } catch (e) {
+      print('Error during refresh: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> _loadUserId() async {
+    try {
+      final storedUser = await SharedPreferencesHelper.getUser();
+      setState(() {
+        userId = storedUser?.id;
+        isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        isLoading = false;
+      });
+      print('Error loading user: $e');
+    }
+  }
+
+  Future<void> _handleCurrentLocation() async {
+    setState(() {
+      _isLoadingCurrentLocation = true;
+    });
+
+    try {
+      final locationProvider = Provider.of<LocationProvider>(
+        context,
+        listen: false,
+      );
+      await locationProvider.initLocation(userId.toString());
+
+      if (mounted) {
+        if (locationProvider.hasError) {
+          _showError(locationProvider.errorMessage);
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        _showError("Failed to get current location: ${e.toString()}");
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingCurrentLocation = false;
+        });
+      }
+    }
+  }
+
+  void _showError(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red.shade600,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: const EdgeInsets.all(16),
       ),
     );
+  }
+
+  void _initSpeech() async {
+    // Check and request microphone permission
+    var status = await Permission.microphone.request();
+    if (status != PermissionStatus.granted) {
+      print('Microphone permission denied');
+      return;
+    }
+
+    try {
+      _speechEnabled = await _speechToText.initialize(
+        onStatus: (status) {
+          print('Speech recognition status: $status');
+          if (status == 'done' || status == 'notListening') {
+            setState(() {
+              _isListening = false;
+            });
+          }
+        },
+        onError: (error) {
+          print('Speech recognition error: $error');
+          setState(() {
+            _isListening = false;
+          });
+          _showErrorSnackBar('Voice recognition error: ${error.errorMsg}');
+        },
+      );
+    } catch (e) {
+      print('Failed to initialize speech recognition: $e');
+      _speechEnabled = false;
+    }
+
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  void _startListening() async {
+    if (!_speechEnabled) {
+      _showErrorSnackBar('Speech recognition not available');
+      return;
+    }
+
+    try {
+      await _speechToText.listen(
+        onResult: (result) {
+          setState(() {
+            _lastWords = result.recognizedWords;
+            _searchController.text = _lastWords;
+          });
+
+          // Automatically search when speech is recognized
+          if (result.finalResult && _lastWords.isNotEmpty) {
+            _performSearch(_lastWords);
+          }
+        },
+        listenFor: Duration(seconds: 30), // Listen for up to 30 seconds
+        pauseFor:
+            Duration(seconds: 3), // Stop listening after 3 seconds of silence
+        partialResults: true,
+        localeId: _getCurrentLanguageCode(),
+        cancelOnError: true,
+        listenMode: ListenMode.confirmation,
+      );
+
+      setState(() {
+        _isListening = true;
+      });
+    } catch (e) {
+      print('Error starting speech recognition: $e');
+      _showErrorSnackBar('Failed to start voice recognition');
+    }
+  }
+
+  String _getCurrentLanguageCode() {
+    final langCode = Provider.of<LanguageProvider>(context, listen: false)
+        .locale
+        .languageCode;
+
+    // Map your app's language codes to speech recognition locale IDs
+    switch (langCode) {
+      case 'te':
+        return 'te-IN'; // Telugu (India)
+      case 'hi':
+        return 'hi-IN'; // Hindi (India)
+      case 'en':
+      default:
+        return 'en-US'; // English (US)
+    }
+  }
+
+  void _performSearch(String query) {
+    if (query.trim().isEmpty) return;
+
+    // Search in medicines
+    // final medicineProvider = Provider.of<MedicineProvider>(context, listen: false);
+    // medicineProvider.searchMedicines(query);
+
+    // You can also add category search here if needed
+    _showSuccessSnackBar('Searching for: $query');
+  }
+
+  /// Show error message
+  void _showErrorSnackBar(String message) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
+    }
+  }
+
+  void _showSuccessSnackBar(String message) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  void _stopListening() async {
+    await _speechToText.stop();
+    setState(() {
+      _isListening = false;
+    });
+  }
+
+  void _initializeUserData() {
+    final profileProvider =
+        Provider.of<ProfileProvider>(context, listen: false);
+    final user = profileProvider.user;
+
+    // Debug print to check if user data exists
+    print('Initializing user data: ${user?.name}, ${user?.mobile}');
+
+    if (user != null) {
+      _initializeUserData();
+
+      // Force rebuild to show the data
+      if (mounted) {
+        setState(() {});
+      }
+    } else if (user == null) {
+      // If user is null, try to initialize the provider
+      print('User is null, trying to initialize provider...');
+      profileProvider.initializeUser().then((_) {
+        if (profileProvider.user != null) {
+          _initializeUserData(); // Recursive call after initialization
+        }
+      });
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    final langCode = Provider.of<LanguageProvider>(context).locale.languageCode;
+    final categoryProvider =
+        Provider.of<CategoryProvider>(context, listen: false);
+
+    if (_lastLang != langCode) {
+      _lastLang = langCode;
+      categoryProvider.loadAllCategories(langCode);
+    }
+  }
+
+  String? _selectedCategory;
+  void _onCategorySelected(String categoryName) {
+
+     setState(() {
+      _selectedCategory = categoryName;
+    });
+    final medicineProvider =
+        Provider.of<MedicineProvider>(context, listen: false);
+
+    if (categoryName.toLowerCase() == 'all' || categoryName.isEmpty) {
+      // Show all medicines
+      medicineProvider.loadAllMedicines();
+    } else {
+      // Show medicines for selected category
+      medicineProvider.loadMedicinesByCategory(categoryName);
+    }
   }
 
   @override
@@ -79,662 +411,1090 @@ void didChangeDependencies() {
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Profile and notification row
-                Row(
-                  children: [
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (context) => ProfileScreen()));
-                      },
-                      child: CircleAvatar(
-                        radius: 24,
-                        backgroundImage: AssetImage('assets/profile.png'),
-                        backgroundColor: Colors.grey[300],
-                      ),
-                    ),
-                    SizedBox(width: 12),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        AppText('wish',
-                            style: TextStyle(
-                                fontSize: 16, color: Colors.grey[600])),
-                        Text("Manoj Kumar",
-                            style: TextStyle(
-                                fontSize: 18, fontWeight: FontWeight.bold)),
-                      ],
-                    ),
-                    Spacer(),
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.black12),
-                      ),
-                      child: GestureDetector(
-                        onTap: () {
-                          showModalBottomSheet(
-                            context: context,
-                            shape: const RoundedRectangleBorder(
-                              borderRadius: BorderRadius.vertical(
-                                  top: Radius.circular(20)),
-                            ),
-                            builder: (BuildContext context) {
-                              return Consumer<LanguageProvider>(
-                                builder: (context, languageProvider, child) {
-                                  return Padding(
-                                    padding: const EdgeInsets.all(16.0),
-                                    child: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        // Header
-                                        Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.spaceBetween,
-                                          children: [
-                                            const Text(
-                                              'Select Language',
-                                              style: TextStyle(
-                                                fontSize: 20,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                            IconButton(
-                                              onPressed: () =>
-                                                  Navigator.pop(context),
-                                              icon: const Icon(Icons.close),
-                                            ),
-                                          ],
-                                        ),
-                                        const SizedBox(height: 16),
-                                        _buildLanguageOption(
-                                          context: context,
-                                          languageCode: 'te',
-                                          languageName: 'తెలుగు (Telugu)',
-                                          languageProvider: languageProvider,
-                                        ),
-                                        _buildLanguageOption(
-                                          context: context,
-                                          languageCode: 'en',
-                                          languageName: 'English',
-                                          languageProvider: languageProvider,
-                                        ),
-                                        _buildLanguageOption(
-                                          context: context,
-                                          languageCode: 'hi',
-                                          languageName: 'हिंदी (Hindi)',
-                                          languageProvider: languageProvider,
-                                        ),
+        child: RefreshIndicator(
+          onRefresh: _handleRefresh,
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      // Consumer<ProfileProvider>(
+                      //   builder: (context, profileProvider, child) {
+                      //     return GestureDetector(
+                      //       onTap: () {
+                      //         Navigator.push(
+                      //             context,
+                      //             MaterialPageRoute(
+                      //                 builder: (context) => ProfileScreen()));
+                      //       },
+                      //       child: CircleAvatar(
+                      //         radius: 24,
+                      //         backgroundColor: Colors.grey[300],
+                      //         backgroundImage: profileProvider.hasProfileImage()
+                      //             ? NetworkImage(
+                      //                 profileProvider.getProfileImageUrl()!)
+                      //             : const AssetImage('assets/profile.png')
+                      //                 as ImageProvider,
+                      //         onBackgroundImageError:
+                      //             profileProvider.hasProfileImage()
+                      //                 ? (exception, stackTrace) {
+                      //                     // This will cause the CircleAvatar to fall back to showing backgroundColor
+                      //                     // You could also set a flag here to show the asset image instead
+                      //                   }
+                      //                 : null,
+                      //         child: profileProvider.hasProfileImage()
+                      //             ? null
+                      //             : Image.asset(
+                      //                 'assets/profile.png',
+                      //                 fit: BoxFit.cover,
+                      //               ),
+                      //       ),
+                      //     );
+                      //   },
+                      // ),
 
-                                        const SizedBox(height: 20),
-                                      ],
-                                    ),
-                                  );
-                                },
-                              );
+                      Consumer<ProfileProvider>(
+                        builder: (context, profileProvider, child) {
+                          return GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (context) =>
+                                          const ProfileScreen()));
                             },
+                            child: CircleAvatar(
+                              radius: 24,
+                              backgroundColor: Colors.grey[300],
+                              backgroundImage: profileProvider.hasProfileImage()
+                                  ? NetworkImage(
+                                      profileProvider.getProfileImageUrl()!)
+                                  : null,
+                              onBackgroundImageError:
+                                  profileProvider.hasProfileImage()
+                                      ? (exception, stackTrace) {
+                                          // This will cause the CircleAvatar to fall back to showing backgroundColor
+                                        }
+                                      : null,
+                            ),
                           );
                         },
-                        child: const Icon(Icons.translate, size: 24),
                       ),
-                    ),
-                    SizedBox(width: 12),
-                    Container(
-                      padding: EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.grey[100],
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(Icons.notifications_none,
-                          size: 24, color: Colors.black54),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 24),
-
-                // Search row
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        decoration: InputDecoration(
-                          hintText:
-                              AppText.translate(context, 'search_medicine'),
-                          prefixIcon: Icon(Icons.search, color: Colors.grey),
-                          contentPadding: EdgeInsets.symmetric(vertical: 12),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(30),
-                            borderSide: BorderSide(color: Colors.grey[300]!),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(30),
-                            borderSide:
-                                BorderSide(color: Color(0xFF5931DD), width: 2),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(30),
-                            borderSide: BorderSide(color: Colors.grey[300]!),
-                          ),
-                          fillColor: Colors.white,
-                          filled: true,
-                        ),
-                      ),
-                    ),
-                    SizedBox(width: 12),
-                    Container(
-                      padding: EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Color(0xFF5931DD),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(Icons.mic, color: Colors.white),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 24),
-
-                Container(
-                  width: double.infinity,
-                  height: 180,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Color(0x40000000),
-                        blurRadius: 7,
-                        offset: Offset(0, 3),
-                      ),
-                    ],
-                  ),
-                  child: Stack(
-                    children: [
-                      Positioned(
-                        right: 0,
-                        bottom: 0,
-                        child: Image.asset(
-                          'assets/deliveryBoy.png',
-                          height: 120,
-                          fit: BoxFit.contain,
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.all(20.0),
+                      const SizedBox(width: 12),
+                      Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                            AppText('wish',
+                                style: TextStyle(
+                                    fontSize: 16, color: Colors.grey[600])),
+                            Row(
                               children: [
-                                AppText(
-                                  "order_medicine",
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    color:
-                                        const Color.fromARGB(255, 17, 17, 17),
-                                  ),
-                                ),
-                                SizedBox(height: 8),
-                                AppText(
-                                  "delivery_line",
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: Color(0XFF000000),
+                                // User name section
+                                Expanded(
+                                  child: FutureBuilder<User?>(
+                                    future: SharedPreferencesHelper.getUser(),
+                                    builder: (context, snapshot) {
+                                      if (snapshot.connectionState ==
+                                          ConnectionState.waiting) {
+                                        return const Text(
+                                          "Loading...",
+                                          style: TextStyle(
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.bold),
+                                        );
+                                      } else if (snapshot.hasError) {
+                                        return const Text(
+                                          "User",
+                                          style: TextStyle(
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.bold),
+                                        );
+                                      } else if (snapshot.hasData &&
+                                          snapshot.data != null) {
+                                        return Text(
+                                          snapshot.data!.name,
+                                          style: const TextStyle(
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.bold),
+                                        );
+                                      } else {
+                                        return const Text(
+                                          "Guest",
+                                          style: TextStyle(
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.bold),
+                                        );
+                                      }
+                                    },
                                   ),
                                 ),
                               ],
                             ),
-                            SizedBox(height: 6),
-                            ElevatedButton(
-                              onPressed: () {},
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Color(0xFF5931DD),
-                                foregroundColor: Colors.white,
-                                textStyle:
-                                    TextStyle(fontWeight: FontWeight.bold),
-                                padding: EdgeInsets.symmetric(
-                                    horizontal: 20, vertical: 10),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                              ),
-                              child: AppText("order_now"),
+                            const SizedBox(height: 8),
+                            // Location Consumer integrated here
+                            Consumer<LocationProvider>(
+                              builder: (context, locationProvider, child) {
+                                final addressParts =
+                                    (locationProvider?.address ?? '')
+                                        .split(',')
+                                        .map((e) => e.trim())
+                                        .toList();
+                                final primaryAddress = addressParts.isNotEmpty
+                                    ? addressParts[0]
+                                    : 'Unknown location';
+                                final secondaryAddress = addressParts.length > 1
+                                    ? addressParts.sublist(1).join(', ')
+                                    : '';
+
+                                return GestureDetector(
+                                  onTap: () async {
+                                    final result = await Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            LocationSearchScreen(
+                                                userId: userId.toString()),
+                                      ),
+                                    );
+
+                                    if (result == true && mounted) {
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        SnackBar(
+                                          content: const Row(
+                                            children: [
+                                              Icon(
+                                                Icons.location_on,
+                                                color: Colors.white,
+                                                size: 20,
+                                              ),
+                                              SizedBox(width: 8),
+                                              Text('Updating location...'),
+                                            ],
+                                          ),
+                                          backgroundColor:
+                                              const Color(0xFF6366F1),
+                                          behavior: SnackBarBehavior.floating,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(12),
+                                          ),
+                                          margin: const EdgeInsets.all(16),
+                                        ),
+                                      );
+                                      // await _handleRefresh();
+                                    }
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 12, vertical: 8),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(12),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withOpacity(0.05),
+                                          blurRadius: 6,
+                                          offset: const Offset(0, 1),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.all(6),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFF6366F1)
+                                                .withOpacity(0.1),
+                                            borderRadius:
+                                                BorderRadius.circular(8),
+                                          ),
+                                          child: const Icon(
+                                            Icons.location_on,
+                                            color: Color(0xFF6366F1),
+                                            size: 16,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Flexible(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              if (locationProvider?.isLoading ==
+                                                  true)
+                                                Row(
+                                                  children: [
+                                                    const SizedBox(
+                                                      width: 10,
+                                                      height: 10,
+                                                      child:
+                                                          CircularProgressIndicator(
+                                                        strokeWidth: 2,
+                                                        color:
+                                                            Color(0xFF6366F1),
+                                                      ),
+                                                    ),
+                                                    const SizedBox(width: 4),
+                                                    Text(
+                                                      'Loading',
+                                                      style: TextStyle(
+                                                        fontSize: 12,
+                                                        color: Colors.grey[600],
+                                                      ),
+                                                    ),
+                                                  ],
+                                                )
+                                              else if (locationProvider
+                                                      ?.hasError ==
+                                                  true)
+                                                const Text(
+                                                  'Tap to set location',
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    color: Color(0xFF6366F1),
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                                )
+                                              else ...[
+                                                Text(
+                                                  primaryAddress,
+                                                  style: const TextStyle(
+                                                    fontSize: 12,
+                                                    color: Color(0xFF1F2937),
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                                  maxLines: 1,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                ),
+                                                if (secondaryAddress.isNotEmpty)
+                                                  Text(
+                                                    secondaryAddress,
+                                                    style: TextStyle(
+                                                      fontSize: 10,
+                                                      color: Colors.grey[600],
+                                                      fontWeight:
+                                                          FontWeight.w400,
+                                                    ),
+                                                    maxLines: 1,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                  ),
+                                              ],
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
                             ),
                           ],
                         ),
                       ),
+                      const SizedBox(width: 12),
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.black12),
+                        ),
+                        child: GestureDetector(
+                          onTap: () {
+                            showModalBottomSheet(
+                              context: context,
+                              shape: const RoundedRectangleBorder(
+                                borderRadius: BorderRadius.vertical(
+                                    top: Radius.circular(20)),
+                              ),
+                              builder: (BuildContext context) {
+                                return Consumer<LanguageProvider>(
+                                  builder: (context, languageProvider, child) {
+                                    return Padding(
+                                      padding: const EdgeInsets.all(16.0),
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          // Header
+                                          Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              const Text(
+                                                'Select Language',
+                                                style: TextStyle(
+                                                  fontSize: 20,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                              IconButton(
+                                                onPressed: () =>
+                                                    Navigator.pop(context),
+                                                icon: const Icon(Icons.close),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 16),
+                                          _buildLanguageOption(
+                                            context: context,
+                                            languageCode: 'te',
+                                            languageName: 'తెలుగు (Telugu)',
+                                            languageProvider: languageProvider,
+                                          ),
+                                          _buildLanguageOption(
+                                            context: context,
+                                            languageCode: 'en',
+                                            languageName: 'English',
+                                            languageProvider: languageProvider,
+                                          ),
+                                          _buildLanguageOption(
+                                            context: context,
+                                            languageCode: 'hi',
+                                            languageName: 'हिंदी (Hindi)',
+                                            languageProvider: languageProvider,
+                                          ),
+                                          const SizedBox(height: 20),
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                );
+                              },
+                            );
+                          },
+                          child: const Icon(Icons.translate, size: 24),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      // SizedBox(
+                      //   width: 40,
+                      //   height: 40,
+                      //   child: GestureDetector(
+                      //     onTap: () {
+                      //       Navigator.push(
+                      //         context,
+                      //         MaterialPageRoute(
+                      //             builder: (context) => NotificationScreen()),
+                      //       );
+                      //     },
+                      //     child: Container(
+                      //       padding: EdgeInsets.all(8),
+                      //       decoration: BoxDecoration(
+                      //         color: Colors.grey[100],
+                      //         shape: BoxShape.circle,
+                      //       ),
+                      //       child: Stack(
+                      //         clipBehavior: Clip.none,
+                      //         children: [
+                      //           // Notification Bell Icon
+                      //           Icon(
+                      //             Icons.notifications_none,
+                      //             size: 24,
+                      //             color: Colors.black54,
+                      //           ),
+                      //           // Red Badge Dot
+                      //           Positioned(
+                      //             right: -2,
+                      //             top: -2,
+                      //             child: Container(
+                      //               width: 14,
+                      //               height: 14,
+                      //               decoration: BoxDecoration(
+                      //                 color: Colors.red,
+                      //                 shape: BoxShape.circle,
+                      //                 border: Border.all(
+                      //                   color: Colors.white,
+                      //                   width: 2,
+                      //                 ),
+                      //               ),
+                      //             ),
+                      //           ),
+                      //         ],
+                      //       ),
+                      //     ),
+                      //   ),
+                      // )
+
+                      SizedBox(
+                        width: 40,
+                        height: 40,
+                        child: GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) =>
+                                      const NotificationScreen()),
+                            );
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.grey[100],
+                              shape: BoxShape.circle,
+                            ),
+                            child: Consumer<NotificationProvider>(
+                              builder: (context, notificationProvider, child) {
+                                return Stack(
+                                  clipBehavior: Clip.none,
+                                  children: [
+                                    // Notification Bell Icon
+                                    const Icon(
+                                      Icons.notifications_none,
+                                      size: 24,
+                                      color: Colors.black54,
+                                    ),
+                                    // Conditional Red Badge Dot
+                                    if (notificationProvider
+                                        .notifications.isNotEmpty)
+                                      Positioned(
+                                        right: -2,
+                                        top: -2,
+                                        child: Container(
+                                          width: 14,
+                                          height: 14,
+                                          decoration: BoxDecoration(
+                                            color: Colors.red,
+                                            shape: BoxShape.circle,
+                                            border: Border.all(
+                                              color: Colors.white,
+                                              width: 2,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                );
+                              },
+                            ),
+                          ),
+                        ),
+                      )
                     ],
                   ),
-                ),
-                SizedBox(height: 24),
+                  // Profile and notification row
+                  // Row(
+                  //   children: [
+                  //     Consumer<ProfileProvider>(
+                  //       builder: (context, profileProvider, child) {
+                  //         return GestureDetector(
+                  //           onTap: () {
+                  //             Navigator.push(
+                  //                 context,
+                  //                 MaterialPageRoute(
+                  //                     builder: (context) => ProfileScreen()));
+                  //           },
+                  //           child: CircleAvatar(
+                  //             radius: 24,
+                  //             backgroundColor: Colors.grey[300],
+                  //             backgroundImage: profileProvider.hasProfileImage()
+                  //                 ? NetworkImage(
+                  //                     profileProvider.getProfileImageUrl()!)
+                  //                 : const AssetImage('')
+                  //                     as ImageProvider,
+                  //             onBackgroundImageError:
+                  //                 profileProvider.hasProfileImage()
+                  //                     ? (exception, stackTrace) {
+                  //                         // This will cause the CircleAvatar to fall back to showing backgroundColor
+                  //                         // You could also set a flag here to show the asset image instead
+                  //                       }
+                  //                     : null,
+                  //             child: profileProvider.hasProfileImage()
+                  //                 ? null
+                  //                 : Image.asset(
+                  //                     'assets/profile.png',
+                  //                     fit: BoxFit.cover,
+                  //                   ),
+                  //           ),
+                  //         );
+                  //       },
+                  //     ),
+                  //     SizedBox(width: 12),
+                  //     Column(
+                  //       crossAxisAlignment: CrossAxisAlignment.start,
+                  //       mainAxisAlignment: MainAxisAlignment.center,
+                  //       children: [
+                  //         AppText('wish',
+                  //             style: TextStyle(
+                  //                 fontSize: 16, color: Colors.grey[600])),
+                  //         FutureBuilder<User?>(
+                  //           future: SharedPreferencesHelper.getUser(),
+                  //           builder: (context, snapshot) {
+                  //             if (snapshot.connectionState ==
+                  //                 ConnectionState.waiting) {
+                  //               return Text(
+                  //                 "Loading...",
+                  //                 style: TextStyle(
+                  //                     fontSize: 18, fontWeight: FontWeight.bold),
+                  //               );
+                  //             } else if (snapshot.hasError) {
+                  //               return Text(
+                  //                 "User",
+                  //                 style: TextStyle(
+                  //                     fontSize: 18, fontWeight: FontWeight.bold),
+                  //               );
+                  //             } else if (snapshot.hasData &&
+                  //                 snapshot.data != null) {
+                  //               return Text(
+                  //                 snapshot.data!.name,
+                  //                 style: TextStyle(
+                  //                     fontSize: 18, fontWeight: FontWeight.bold),
+                  //               );
+                  //             } else {
+                  //               return Text(
+                  //                 "Guest",
+                  //                 style: TextStyle(
+                  //                     fontSize: 18, fontWeight: FontWeight.bold),
+                  //               );
+                  //             }
+                  //           },
+                  //         ),
+                  //       ],
+                  //     ),
+                  //     Spacer(),
+                  //     Container(
+                  //       padding: const EdgeInsets.all(8),
+                  //       decoration: BoxDecoration(
+                  //         borderRadius: BorderRadius.circular(12),
+                  //         border: Border.all(color: Colors.black12),
+                  //       ),
+                  //       child: GestureDetector(
+                  //         onTap: () {
+                  //           showModalBottomSheet(
+                  //             context: context,
+                  //             shape: const RoundedRectangleBorder(
+                  //               borderRadius: BorderRadius.vertical(
+                  //                   top: Radius.circular(20)),
+                  //             ),
+                  //             builder: (BuildContext context) {
+                  //               return Consumer<LanguageProvider>(
+                  //                 builder: (context, languageProvider, child) {
+                  //                   return Padding(
+                  //                     padding: const EdgeInsets.all(16.0),
+                  //                     child: Column(
+                  //                       mainAxisSize: MainAxisSize.min,
+                  //                       crossAxisAlignment:
+                  //                           CrossAxisAlignment.start,
+                  //                       children: [
+                  //                         // Header
+                  //                         Row(
+                  //                           mainAxisAlignment:
+                  //                               MainAxisAlignment.spaceBetween,
+                  //                           children: [
+                  //                             const Text(
+                  //                               'Select Language',
+                  //                               style: TextStyle(
+                  //                                 fontSize: 20,
+                  //                                 fontWeight: FontWeight.bold,
+                  //                               ),
+                  //                             ),
+                  //                             IconButton(
+                  //                               onPressed: () =>
+                  //                                   Navigator.pop(context),
+                  //                               icon: const Icon(Icons.close),
+                  //                             ),
+                  //                           ],
+                  //                         ),
+                  //                         const SizedBox(height: 16),
+                  //                         _buildLanguageOption(
+                  //                           context: context,
+                  //                           languageCode: 'te',
+                  //                           languageName: 'తెలుగు (Telugu)',
+                  //                           languageProvider: languageProvider,
+                  //                         ),
+                  //                         _buildLanguageOption(
+                  //                           context: context,
+                  //                           languageCode: 'en',
+                  //                           languageName: 'English',
+                  //                           languageProvider: languageProvider,
+                  //                         ),
+                  //                         _buildLanguageOption(
+                  //                           context: context,
+                  //                           languageCode: 'hi',
+                  //                           languageName: 'हिंदी (Hindi)',
+                  //                           languageProvider: languageProvider,
+                  //                         ),
 
-                // const Text(
-                //   "Services",
-                //   style: TextStyle(
-                //     fontSize: 18,
-                //     fontWeight: FontWeight.bold,
-                //   ),
-                // ),
+                  //                         const SizedBox(height: 20),
+                  //                       ],
+                  //                     ),
+                  //                   );
+                  //                 },
+                  //               );
+                  //             },
+                  //           );
+                  //         },
+                  //         child: const Icon(Icons.translate, size: 24),
+                  //       ),
+                  //     ),
+                  //     const SizedBox(
+                  //       width: 12,
+                  //     ),
+                  //     SizedBox(
+                  //       width: 40,
+                  //       height: 40,
+                  //       child: GestureDetector(
+                  //         onTap: () {
+                  //           Navigator.push(
+                  //             context,
+                  //             MaterialPageRoute(
+                  //                 builder: (context) => NotificationScreen()),
+                  //           );
+                  //         },
+                  //         child: Container(
+                  //           padding: EdgeInsets.all(8),
+                  //           decoration: BoxDecoration(
+                  //             color: Colors.grey[100],
+                  //             shape: BoxShape.circle,
+                  //           ),
+                  //           child: Stack(
+                  //             clipBehavior: Clip.none,
+                  //             children: [
+                  //               // Notification Bell Icon
+                  //               Icon(
+                  //                 Icons.notifications_none,
+                  //                 size: 24,
+                  //                 color: Colors.black54,
+                  //               ),
 
-                // SizedBox(height: 24),
+                  //               // Red Badge Dot
+                  //               Positioned(
+                  //                 right: -2,
+                  //                 top: -2,
+                  //                 child: Container(
+                  //                   width: 14,
+                  //                   height: 14,
+                  //                   decoration: BoxDecoration(
+                  //                     color: Colors.red,
+                  //                     shape: BoxShape.circle,
+                  //                     border: Border.all(
+                  //                       color: Colors
+                  //                           .white, // White border to match background
+                  //                       width: 2,
+                  //                     ),
+                  //                   ),
+                  //                 ),
+                  //               ),
+                  //             ],
+                  //           ),
+                  //         ),
+                  //       ),
+                  //     )
+                  //   ],
+                  // ),
+                  const SizedBox(height: 24),
 
-                // Row(
-                //   mainAxisAlignment: MainAxisAlignment.start,
-                //   children: [
-                //     _buildServicesItem(
-                //       imagePath: 'assets/icons/pharmacy.png',
-                //       label: "Pharmacy",
-                //     ),
-                //   ],
-                // ),
-
-                const Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    AppText(
-                      "services",
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    // Add refresh button for services
-                    // Consumer<ServiceProvider>(
-                    //   builder: (context, serviceProvider, child) {
-                    //     return GestureDetector(
-                    //       onTap: () {
-                    //         serviceProvider.refreshServices();
-                    //       },
-                    //       child: Icon(
-                    //         Icons.refresh,
-                    //         color: Color(0xFF5931DD),
-                    //         size: 20,
-                    //       ),
-                    //     );
-                    //   },
-                    // ),
-                  ],
-                ),
-
-                const SizedBox(height: 24),
-
-                Consumer<ServiceProvider>(
-                  builder: (context, serviceProvider, child) {
-                    if (serviceProvider.isLoading) {
-                      return Container(
-                        height: 110,
-                        child: Center(
-                          child: CircularProgressIndicator(
-                            color: Color(0xFF5931DD),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          readOnly: true,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => const SearchScreen()),
+                            );
+                          },
+                          decoration: InputDecoration(
+                            hintText:
+                                AppText.translate(context, 'search_medicine'),
+                            prefixIcon:
+                                const Icon(Icons.search, color: Colors.grey),
+                            contentPadding:
+                                const EdgeInsets.symmetric(vertical: 12),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(30),
+                              borderSide: BorderSide(color: Colors.grey[300]!),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(30),
+                              borderSide:const BorderSide(
+                                  color: Color.fromARGB(255, 255, 255, 255), width: 2),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(30),
+                              borderSide: BorderSide(color: Colors.grey[300]!),
+                            ),
+                            fillColor: const Color(0xFFEFF3F7)
+,
+                            filled: true,
                           ),
                         ),
-                      );
-                    }
+                      ),
 
-                    if (serviceProvider.hasError) {
-                      return Container(
-                        height: 110,
-                        child: Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                'Error loading services',
-                                style:
-                                    TextStyle(color: Colors.red, fontSize: 14),
-                              ),
-                              SizedBox(height: 8),
-                              ElevatedButton(
-                                onPressed: () {
-                                  serviceProvider.fetchAllServices();
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Color(0xFF5931DD),
-                                  padding: EdgeInsets.symmetric(
-                                      horizontal: 16, vertical: 8),
+                      const SizedBox(width: 12),
+                      // Container(
+                      //   padding: const EdgeInsets.all(12),
+                      //   decoration: const BoxDecoration(
+                      //     color: Color(0xFF5931DD),
+                      //     shape: BoxShape.circle,
+                      //   ),
+                      //   child: const Icon(Icons.mic, color: Colors.white),
+                      // ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+
+                  const OrderMedicineCarouselWithAppText(),
+
+                  const SizedBox(height: 24),
+                  const Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      AppText(
+                        "services",
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  Consumer<ServiceProvider>(
+                    builder: (context, serviceProvider, child) {
+                      if (serviceProvider.isLoading) {
+                        return Container(
+                          height: 110,
+                          child: Center(
+                            child: CircularProgressIndicator(
+                              color: Color(0xFF5931DD),
+                            ),
+                          ),
+                        );
+                      }
+
+                      if (serviceProvider.hasError) {
+                        return Container(
+                          height: 110,
+                          child: Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                // Text(
+                                //   'Error loading services',
+                                //   style:
+                                //       TextStyle(color: Colors.red, fontSize: 14),
+                                // ),
+                                SizedBox(height: 8),
+                                ElevatedButton(
+                                  onPressed: () {
+                                    serviceProvider.fetchAllServices();
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Color(0xFF5931DD),
+                                    padding: EdgeInsets.symmetric(
+                                        horizontal: 16, vertical: 8),
+                                  ),
+                                  child: Text(
+                                    'Retry',
+                                    style: TextStyle(
+                                        color: Colors.white, fontSize: 12),
+                                  ),
                                 ),
-                                child: Text(
-                                  'Retry',
-                                  style: TextStyle(
-                                      color: Colors.white, fontSize: 12),
-                                ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
-                        ),
-                      );
-                    }
+                        );
+                      }
 
-                    if (!serviceProvider.hasServices) {
+                      if (!serviceProvider.hasServices) {
+                        return Container(
+                          height: 110,
+                          child: Center(
+                            child: Text(
+                              'No services available',
+                              style: TextStyle(color: Colors.grey[600]),
+                            ),
+                          ),
+                        );
+                      }
+
+                      // Display services in a horizontal scrollable list
                       return Container(
                         height: 110,
-                        child: Center(
-                          child: Text(
-                            'No services available',
-                            style: TextStyle(color: Colors.grey[600]),
-                          ),
-                        ),
-                      );
-                    }
-
-                    // Display services in a horizontal scrollable list
-                    return Container(
-                      height: 110,
-                      child: ListView.builder(
-                        scrollDirection: Axis.horizontal,
-                        itemCount: serviceProvider.services.length,
-                        itemBuilder: (context, index) {
-                          final service = serviceProvider.services[index];
-                          return Padding(
-                            padding: EdgeInsets.only(
-                              right: index < serviceProvider.services.length - 1
-                                  ? 12
-                                  : 0,
-                            ),
-                            child: _buildServicesItem(
-                              imagePath: service.image.isNotEmpty
-                                  ? service.image
-                                  : 'assets/icons/pharmacy.png', // fallback image
-                              label: service.servicesName,
-                              serviceId: service.id,
-                            ),
-                          );
-                        },
-                      ),
-                    );
-                  },
-                ),
-
-                SizedBox(height: 24),
-
-                // Category section
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const AppText(
-                      "categories",
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Row(
-                      children: [
-                        AppText(
-                          "see_all",
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[600], // gray color
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        const SizedBox(
-                            width: 4), // small space between text and icon
-                        Icon(
-                          Icons.arrow_forward_ios,
-                          size: 14,
-                          color: Colors.grey[600], // gray color
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 16),
-
-                // Category icons row
-                Consumer<CategoryProvider>(
-                  builder: (context, categoryProvider, child) {
-                    // Debug prints
-                    print("=== Debug Info ===");
-                    print(
-                        "isShowingAllCategories: ${categoryProvider.isShowingAllCategories}");
-                    print(
-                        "selectedServiceName: '${categoryProvider.selectedServiceName}'");
-                    print("==================");
-
-                    return SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: [
-                          Padding(
-                            padding:
-                                const EdgeInsets.symmetric(horizontal: 4.0),
-                            child: GestureDetector(
-                              onTap: () {
-                                print("Tapped All button");
-                                final langCode = Provider.of<LanguageProvider>(
-                                        context,
-                                        listen: false)
-                                    .locale
-                                    .languageCode;
-                                categoryProvider.loadAllCategories(langCode);
-                              },
-                              child: _buildCategoryItem(
-                                imagePath: 'assets/icons/all.png',
-                                label: "All",
-                                isSelected:
-                                    categoryProvider.isShowingAllCategories,
-                              ),
-                            ),
-                          ),
-                          ...categoryProvider.categories.map((category) {
-                            bool isSelected =
-                                categoryProvider.selectedServiceName ==
-                                    category.serviceName;
-                            print(
-                                "Category: ${category.categoryName}, Service: ${category.serviceName}, Selected: $isSelected");
-
+                        child: ListView.builder(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: serviceProvider.services.length,
+                          itemBuilder: (context, index) {
+                            final service = serviceProvider.services[index];
                             return Padding(
+                              padding: EdgeInsets.only(
+                                right:
+                                    index < serviceProvider.services.length - 1
+                                        ? 12
+                                        : 0,
+                              ),
+                              child: _buildServicesItem(
+                                context: context,
+                                imagePath: service.image.isNotEmpty
+                                    ? service.image
+                                    : 'assets/icons/pharmacy.png', // fallback image
+                                label: service.servicesName,
+                                serviceId: service.id,
+                              ),
+                            );
+                          },
+                        ),
+                      );
+                    },
+                  ),
+
+                  SizedBox(height: 24),
+
+                  // Category section
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const AppText(
+                        "categories",
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Row(
+                        children: [
+                          GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (context) =>
+                                          const CategoryScreen()));
+                            },
+                            child: AppText(
+                              "see_all",
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey[600],
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Icon(
+                            Icons.arrow_forward_ios,
+                            size: 14,
+                            color: Colors.grey[600], // gray color
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 16),
+                  Consumer<CategoryProvider>(
+                    builder: (context, categoryProvider, child) {
+                      print("=== Debug Info ===");
+                      print(
+                          "isShowingAllCategories: ${categoryProvider.isShowingAllCategories}");
+                      print(
+                          "selectedServiceName: '${categoryProvider.selectedServiceName}'");
+                      print("==================");
+
+                      return SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: [
+                            Padding(
                               padding:
                                   const EdgeInsets.symmetric(horizontal: 4.0),
                               child: GestureDetector(
                                 onTap: () {
-                                  print(
-                                      "Tapped category: ${category.categoryName}, Service: ${category.serviceName}");
-                                  categoryProvider.loadCategoriesByService(
-                                      category.serviceName,_lastLang);
+                                  setState(() {
+                                    _selectedCategory = null;
+                                  });
+                                  print("Tapped All button");
+                                  final langCode =
+                                      Provider.of<LanguageProvider>(context,
+                                              listen: false)
+                                          .locale
+                                          .languageCode;
+                                  categoryProvider.loadAllCategories(langCode);
+                                  // Load all medicines when "All" is selected
+                                  _onCategorySelected('all');
                                 },
                                 child: _buildCategoryItem(
-                                  imagePath: category.image.isNotEmpty
-                                      ? category.image
-                                      : 'assets/icons/default_category.png',
-                                  label: category.categoryName,
-                                  isSelected: isSelected,
+                                  imagePath: 'assets/icons/all.png',
+                                  label: "All",
+                                  isSelected:
+                                      categoryProvider.isShowingAllCategories,
+                                  categoryName: 'all',
                                 ),
                               ),
-                            );
-                          }).toList(),
-                        ],
-                      ),
-                    );
-                  },
-                ),
+                            ),
 
-                SizedBox(height: 24),
+                            // Create individual category items for each unique category
+                            ...categoryProvider.categories.map((category) {
+                              bool isSelected =
+                                  !categoryProvider.isShowingAllCategories &&
+                                      categoryProvider.selectedServiceName ==
+                                          category.serviceName;
 
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.grey.withOpacity(0.1),
-                        spreadRadius: 1,
-                        blurRadius: 4,
-                        offset: const Offset(0, 1),
-                      ),
-                    ],
-                  ),
-                  child: Stack(
-                    children: [
-                      // Main Content Column
-                      Column(
-                        children: [
-                          // Header Row
-                          Row(
-                            children: [
-                              // App Icon and Order Status
-                              Container(
-                                width: 60,
-                                height: 60,
-                                decoration: BoxDecoration(
-                                  color: Colors.blue[50],
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(12),
-                                  child: Image.asset(
-                                    "assets/tablet.png",
-                                    width: 60,
-                                    height: 60,
-                                    fit: BoxFit.cover,
+                              return Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 4.0),
+                                child: GestureDetector(
+                                  onTap: () {
+                                    print(
+                                        "Tapped category: ${category.categoryName}");
+
+                                    setState(() {
+                                      _selectedCategory = category
+                                          .categoryName; // update selected
+                                    });
+
+                                    // Show popup/snackbar
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                            "Selected category: ${category.categoryName}"),
+                                        duration: const Duration(seconds: 2),
+                                        backgroundColor:
+                                            const Color(0xFF5931DD),
+                                      ),
+                                    );
+
+                                    categoryProvider.loadCategoriesByService(
+                                        category.serviceName, _lastLang);
+
+                                    _onCategorySelected(category.categoryName);
+                                  },
+                                  child: _buildCategoryItem(
+                                    imagePath: category.image.isNotEmpty
+                                        ? category.image
+                                        : 'assets/icons/default_category.png',
+                                    label: category.categoryName,
+                                    isSelected: isSelected,
+                                    categoryName: category.categoryName,
                                   ),
                                 ),
+                              );
+                            }).toList(),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+
+                  const SizedBox(height: 24),
+                  FutureBuilder<User?>(
+                    future: SharedPreferencesHelper.getUser(),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return Container(
+                          // Loading state
+                          child: Center(child: CircularProgressIndicator()),
+                        );
+                      } else if (snapshot.hasError || snapshot.data == null) {
+                        return Container(
+                          // Error or no user state
+                          child:const Text('No active orders'),
+                        );
+                      } else {
+                        // User exists, show order status
+                        return OrderStatusWidget(userId: snapshot.data!.id);
+                      }
+                    },
+                  ),
+
+                  // OrderStatusWidget(userId: userId.toString(),),
+                  const SizedBox(height: 24),
+
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const AppText(
+                        "previous_orders",
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Row(
+                        children: [
+                          GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (context) =>
+                                          const OrdersHistoryScreen()));
+                            },
+                            child: AppText(
+                              "see_all",
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey[600], // gray color
+                                fontWeight: FontWeight.w500,
                               ),
-                              const SizedBox(width: 8),
-                              AppText(
-                                "order_eta",
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ],
+                            ),
                           ),
-                          const SizedBox(height: 16),
-                          // Progress Bar
-                          CustomProgressBar(currentStep: 2, totalSteps: 3),
-                          const SizedBox(height: 16),
-                          // Order Status Icons
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceAround,
-                            children: [
-                              // Order Placed
-                              _buildStepItem(
-                                imagePath: 'assets/icons/cart.png',
-                                label: 'order_placed',
-                              ),
-
-                              // Order Pickup
-                              _buildStepItem(
-                                imagePath: 'assets/icons/pickup.png',
-                                label: 'order_pickup',
-                              ),
-
-                              // Order Delivery (active)
-                              _buildStepItem(
-                                imagePath: 'assets/icons/order.png',
-                                label: 'order_delivery',
-                              ),
-                            ],
+                          const SizedBox(
+                              width: 4), // small space between text and icon
+                          Icon(
+                            Icons.arrow_forward_ios,
+                            size: 14,
+                            color: Colors.grey[600], // gray color
                           ),
                         ],
                       ),
-                      // Updated Time Text - positioned at top right
-                      Positioned(
-                        top: 0,
-                        right: 0,
-                        child: AppText(
-                          "updated_ago",
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                      ),
                     ],
                   ),
-                ),
+                  const SizedBox(
+                    height: 10,
+                  ),
 
-                const SizedBox(height: 24),
+                  // Previous Orders Section
+                  const MedicationOrdersList(),
 
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const AppText(
-                      "previous_orders",
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Row(
-                      children: [
-                        AppText(
-                          "see_all",
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[600], // gray color
-                            fontWeight: FontWeight.w500,
-                          ),
+                  const SizedBox(height: 24),
+
+                  // Periodic Meds Plan
+                  const PeriodicMedsPlanCardSimple(),
+                  const SizedBox(height: 24),
+
+                  // All Medicines
+                  const Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      AppText(
+                        "all_medicines",
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
                         ),
-                        const SizedBox(
-                            width: 4), // small space between text and icon
-                        Icon(
-                          Icons.arrow_forward_ios,
-                          size: 14,
-                          color: Colors.grey[600], // gray color
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                SizedBox(
-                  height: 10,
-                ),
-
-                // Previous Orders Section
-                MedicationOrdersList(),
-
-                SizedBox(height: 24),
-
-                // Periodic Meds Plan
-                PeriodicMedsPlanCardSimple(),
-                SizedBox(height: 24),
-
-                // All Medicines
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    AppText(
-                      "all_medicines",
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
                       ),
-                    ),
-                    AppText(
-                      "filter",
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Color(0xFF5931DD),
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 16),
+                      // AppText(
+                      //   "filter",
+                      //   style: TextStyle(
+                      //     fontSize: 14,
+                      //     color: Color(0xFF5931DD),
+                      //     fontWeight: FontWeight.w500,
+                      //   ),
+                      // ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
 
-                // Medicine grid
-                _buildAllMedicineCardGrid(context)
-              ],
+                  // Medicine grid
+                  _buildAllMedicineCardGrid(context)
+                ],
+              ),
             ),
           ),
         ),
@@ -773,14 +1533,14 @@ void didChangeDependencies() {
   Widget _buildMedicineCardItem(BuildContext context, MedicineModel medicine) {
     final String name = medicine.name;
     final String description = medicine.description;
-    final String price = '₹${medicine.price}';
-    final String location =
-        'Unknown Pharmacy'; // Replace when pharmacy is added
+    final String price = '₹${medicine.mrp}';
+    // final String location =
+    //     'Unknown Pharmacy'; // Replace when pharmacy is added
     final String imagePath =
         medicine.images.isNotEmpty ? medicine.images[0] : '';
 
     return Container(
-      height: 292,
+      height: 280, // Fixed height for all cards
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
         color: Colors.white,
@@ -796,6 +1556,7 @@ void didChangeDependencies() {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Image section
           ClipRRect(
             borderRadius: const BorderRadius.only(
               topLeft: Radius.circular(12),
@@ -806,7 +1567,8 @@ void didChangeDependencies() {
                 imagePath.isNotEmpty
                     ? Image.network(
                         imagePath,
-                        height: 120,
+                        height:
+                            90, // Fixed the height from 78 to 120 to match the else case
                         width: double.infinity,
                         fit: BoxFit.cover,
                       )
@@ -839,53 +1601,94 @@ void didChangeDependencies() {
               ],
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(name,
-                    style: const TextStyle(
-                        fontSize: 16, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 4),
-                Text(
-                  '${description.split(' ').take(3).join(' ')}...',
-                  style: const TextStyle(fontSize: 14, color: Colors.black87),
-                ),
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    const Icon(Icons.location_on,
-                        color: Colors.deepPurple, size: 14),
-                    const SizedBox(width: 4),
-                    Text(location,
-                        style:
-                            const TextStyle(fontSize: 12, color: Colors.grey)),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                ElevatedButton(
-                  onPressed: () {
-                    _showMedicineDetailsModal(
-                      context,
-                      name: name,
-                      description: description,
-                      price: price,
-                      location: location,
-                      imagePath: imagePath,
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.deepPurple,
-                    minimumSize: const Size(double.infinity, 36),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+
+          // Content section with fixed layout
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Medicine name - fixed height container
+                  SizedBox(
+                    height: 40, // Fixed height to accommodate 2 lines
+                    child: Text(
+                      name,
+                      style: const TextStyle(
+                          fontSize: 15, fontWeight: FontWeight.bold),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  child: const AppText('add_on',
-                      style: TextStyle(color: Colors.white)),
-                ),
-              ],
+                  const SizedBox(height: 4),
+
+                  // Description - single line
+                  Text(
+                    description.length > 25
+                        ? '${description.substring(0, 25)}...'
+                        : description,
+                    style: const TextStyle(fontSize: 13, color: Colors.black87),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 8),
+
+                  // Location
+                  Row(
+                    children: [
+                      const Icon(Icons.location_on,
+                          color: Colors.deepPurple, size: 14),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          '${medicine.pharmacy.address}',
+                          style:
+                              const TextStyle(fontSize: 12, color: Colors.grey),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  // Spacer to push button to bottom
+                  const Spacer(),
+
+                  // Button section - always at bottom
+                  SizedBox(
+                    width: double.infinity,
+                    height: 36, // Consistent button height
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (context) => ScannedMedicineScreen(
+                                      medicineId: medicine.medicineId,
+                                      address: medicine.pharmacy.address,
+                                      mrp: medicine.mrp,
+                                    )));
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF5931DD)
+,
+                        foregroundColor: Colors.white,
+                        elevation: 1,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: const AppText(
+                        'Add On',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w500,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ],
@@ -991,20 +1794,27 @@ Widget _buildStepItem({
   );
 }
 
+String? _selectedCategory;
+
 Widget _buildCategoryItem({
   required String imagePath,
   required String label,
   bool isSelected = false,
+  required String categoryName,
 }) {
+  final bool actuallySelected = _selectedCategory == categoryName;
+
   return Container(
     width: 75,
-    height: 89,
+    height: 90,
     decoration: BoxDecoration(
-      color:
-          isSelected ? Color(0XFFEFF3F7) : Color.fromARGB(255, 255, 255, 255),
+      color: actuallySelected
+          ? const Color(0xFF5931DD).withOpacity(0.1)
+          : Colors.white,
       borderRadius: BorderRadius.circular(16),
       border: Border.all(
-        color: isSelected ? Color(0xFF5931DD) : Colors.grey,
+        color: actuallySelected ? const Color(0xFF5931DD) : const Color(0xFF5931DD),
+        width: 2,
       ),
     ),
     child: Column(
@@ -1023,9 +1833,12 @@ Widget _buildCategoryItem({
             child: Text(
               label,
               style: TextStyle(
-                fontSize: 14,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                color: isSelected ? Color(0xFF5931DD) : Colors.grey[600],
+                fontSize: 12,
+                fontWeight:
+                    isSelected ? FontWeight.bold : FontWeight.normal,
+                color: actuallySelected
+                    ? const Color(0xFF5931DD)
+                    : Colors.grey[600],
               ),
               textAlign: TextAlign.center,
               maxLines: 2,
@@ -1046,12 +1859,6 @@ Widget _buildImageWidget(String imagePath) {
     return Image.network(
       imagePath,
       fit: BoxFit.contain,
-      // errorBuilder: (context, error, stackTrace) {
-      //   return Image.asset(
-      //     'assets/icons/default_category.png',
-      //     fit: BoxFit.contain,
-      //   );
-      // },
       loadingBuilder: (context, child, loadingProgress) {
         if (loadingProgress == null) return child;
         return Center(
@@ -1071,7 +1878,7 @@ Widget _buildImageWidget(String imagePath) {
       imagePath,
       fit: BoxFit.contain,
       errorBuilder: (context, error, stackTrace) {
-        return Icon(
+        return const Icon(
           Icons.category,
           size: 24,
           color: Colors.grey,
@@ -1082,13 +1889,17 @@ Widget _buildImageWidget(String imagePath) {
 }
 
 Widget _buildServicesItem({
+  required BuildContext context, // <-- Add context here
   required String imagePath,
   required String label,
   required String serviceId,
 }) {
   return GestureDetector(
     onTap: () {
-      // _categoryFilter(serviceName: label);
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => NearPharmacyScreen()),
+      );
     },
     child: Container(
       width: 90,
@@ -1097,7 +1908,7 @@ Widget _buildServicesItem({
         color: Colors.grey[100],
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: Color(0xFF5931DD), // Purple border
+          color:const Color(0xFF5931DD), // Purple border
           width: 1,
         ),
       ),
@@ -1107,7 +1918,7 @@ Widget _buildServicesItem({
           Container(
             width: 58,
             height: 58,
-            decoration: BoxDecoration(
+            decoration:const BoxDecoration(
               shape: BoxShape.circle,
             ),
             child: Padding(
@@ -1115,8 +1926,7 @@ Widget _buildServicesItem({
               child: ClipOval(
                 child: Image.network(
                   imagePath,
-                  fit: BoxFit
-                      .cover, // Use cover instead of fill for better aspect ratio
+                  fit: BoxFit.cover,
                 ),
               ),
             ),
@@ -1137,32 +1947,140 @@ Widget _buildServicesItem({
   );
 }
 
-// void _categoryFilter({required String serviceName}) {
-//   print('oooooooooooooooooooooooooooooooo$serviceName');
-//   try {
-//     CategoryProvider categoryProvider = CategoryProvider();
-//     categoryProvider.fetchCategories(serviceName: serviceName,languageCode: langCode);
-//   } catch (e) {
-//     print("Errrrrrrrrrrrrrrrrrrrrrrrrrrrr$e");
-//   }
-// }
-
-// Medicine Details Modal Widget
-class MedicineDetailsModal extends StatelessWidget {
-  final String name;
+class MedicineDetailsModal extends StatefulWidget {
+  final String pharmacyName;
+  final String medicineName;
   final String description;
   final String price;
   final String location;
-  final String imagePath;
+  final String pharmacyImage;
 
   const MedicineDetailsModal({
     Key? key,
-    required this.name,
+    required this.pharmacyName,
+    required this.medicineName,
     required this.description,
     required this.price,
     required this.location,
-    required this.imagePath,
+    required this.pharmacyImage,
   }) : super(key: key);
+
+  @override
+  State<MedicineDetailsModal> createState() => _MedicineDetailsModalState();
+}
+
+class _MedicineDetailsModalState extends State<MedicineDetailsModal> {
+  bool isChecked = false;
+  late stt.SpeechToText _speech;
+  bool _isListening = false;
+  String _searchText = '';
+  late TextEditingController _searchController;
+  bool _isSearching = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _speech = stt.SpeechToText();
+    _searchController = TextEditingController();
+    _searchController.addListener(_onSearchChanged);
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _onSearchChanged() {
+    setState(() {
+      _searchText = _searchController.text;
+      _isSearching = _searchText.isNotEmpty;
+    });
+  }
+
+  Future<void> _initSpeech() async {
+    bool available = await _speech.initialize(
+      onStatus: (status) {
+        setState(() {
+          _isListening = status == 'listening';
+        });
+      },
+      onError: (error) {
+        setState(() {
+          _isListening = false;
+        });
+        _showErrorSnackBar('Voice recognition error: ${error.errorMsg}');
+      },
+    );
+
+    if (!available) {
+      _showErrorSnackBar('Speech recognition not available on this device');
+    }
+  }
+
+  Future<void> _startListening() async {
+    // Request microphone permission
+    var status = await Permission.microphone.request();
+    if (status != PermissionStatus.granted) {
+      _showErrorSnackBar('Microphone permission is required for voice search');
+      return;
+    }
+
+    if (!_isListening) {
+      await _initSpeech();
+      if (_speech.isAvailable) {
+        setState(() {
+          _isListening = true;
+        });
+
+        await _speech.listen(
+          onResult: (result) {
+            setState(() {
+              _searchController.text = result.recognizedWords;
+            });
+          },
+          listenFor: const Duration(seconds: 10),
+          pauseFor: const Duration(seconds: 3),
+        );
+      }
+    } else {
+      await _stopListening();
+    }
+  }
+
+  Future<void> _stopListening() async {
+    await _speech.stop();
+    setState(() {
+      _isListening = false;
+    });
+  }
+
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
+  bool _matchesSearch() {
+    if (_searchText.isEmpty) return true;
+
+    final searchLower = _searchText.toLowerCase();
+    return widget.medicineName.toLowerCase().contains(searchLower) ||
+        widget.description.toLowerCase().contains(searchLower) ||
+        widget.pharmacyName.toLowerCase().contains(searchLower);
+  }
+
+  void _clearSearch() {
+    _searchController.clear();
+    setState(() {
+      _searchText = '';
+      _isSearching = false;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1177,7 +2095,6 @@ class MedicineDetailsModal extends StatelessWidget {
       ),
       child: Column(
         children: [
-          // Modal header with close button
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
@@ -1197,8 +2114,9 @@ class MedicineDetailsModal extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const AppText(
-                  'periodic_plan',
+                const SizedBox(width: 40),
+                const Text(
+                  'Periodic Meds Plan',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -1211,112 +2129,204 @@ class MedicineDetailsModal extends StatelessWidget {
               ],
             ),
           ),
-
-          // Search bar
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.grey[100],
-                borderRadius: BorderRadius.circular(30),
-              ),
-              child: TextField(
-                decoration: InputDecoration(
-                  hintText: AppText.translate(context, 'search_medicine'),
-                  prefixIcon: const Icon(Icons.search, color: Colors.grey),
-                  suffixIcon: Container(
-                    margin: const EdgeInsets.all(5),
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF5931DD),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.mic, color: Colors.white, size: 20),
+          // Search results indicator
+          if (_isSearching) ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.search,
+                    size: 16,
+                    color: Colors.grey[600],
                   ),
-                  border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Searching for "$_searchText"',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[600],
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                  if (!_matchesSearch()) ...[
+                    const SizedBox(width: 8),
+                    const Text(
+                      '• No matches',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.orange,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+
+          // Pharmacy/Medicine card - only show if matches search
+          if (_matchesSearch()) ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey.shade200),
+                ),
+                child: ListTile(
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  leading: ClipRRect(
+                    borderRadius: BorderRadius.circular(6),
+                    child: widget.pharmacyImage.isNotEmpty
+                        ? Image.network(
+                            widget.pharmacyImage,
+                            width: 80,
+                            height: 80,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                width: 80,
+                                height: 80,
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[200],
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Icon(
+                                  Icons.local_pharmacy,
+                                  size: 30,
+                                  color: Colors.grey[400],
+                                ),
+                              );
+                            },
+                            loadingBuilder: (context, child, loadingProgress) {
+                              if (loadingProgress == null) return child;
+                              return Container(
+                                width: 80,
+                                height: 80,
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[200],
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: const Center(
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Color(0xFF5931DD),
+                                  ),
+                                ),
+                              );
+                            },
+                          )
+                        : Container(
+                            width: 80,
+                            height: 80,
+                            decoration: BoxDecoration(
+                              color: Colors.grey[200],
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Icon(
+                              Icons.local_pharmacy,
+                              size: 30,
+                              color: Colors.grey[400],
+                            ),
+                          ),
+                  ),
+                  title: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Pharmacy Name
+                      Text(
+                        widget.pharmacyName,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                          color: Colors.black87,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
+
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.location_on,
+                            size: 14,
+                            color: Color.fromARGB(255, 87, 106, 245),
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              widget.location,
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey[600],
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  trailing: Checkbox(
+                    value: isChecked,
+                    activeColor: const Color(0xFF5931DD),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    onChanged: (value) {
+                      setState(() {
+                        isChecked = !isChecked;
+                      });
+                      // Handle checkbox change
+                    },
+                  ),
                 ),
               ),
             ),
-          ),
-
-          // Medicine card
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey.shade200),
-              ),
-              child: ListTile(
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                leading: ClipRRect(
-                  borderRadius: BorderRadius.circular(6),
-                  child: Image.network(
-                    imagePath,
-                    width: 80,
-                    height: 80,
-                    fit: BoxFit.cover,
-                  ),
-                ),
-
-                // Use a Column here instead of title + subtitle
-                title: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+          ] else if (_isSearching) ...[
+            // No results found state
+            Expanded(
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(
-                      name, // e.g. "Some Drug Store"
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12, // same size as your bold drug name
-                      ),
+                    Icon(
+                      Icons.search_off,
+                      size: 64,
+                      color: Colors.grey[400],
                     ),
-                    SizedBox(height: 4),
+                    const SizedBox(height: 16),
                     Text(
-                      "Paracetamol", // your drug name
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12, // same size as the title
+                      'No medicines found for "$_searchText"',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.grey[600],
                       ),
+                      textAlign: TextAlign.center,
                     ),
-                    SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.location_on,
-                          size: 14,
-                          color: Colors.grey[600],
+                    const SizedBox(height: 8),
+                    TextButton(
+                      onPressed: _clearSearch,
+                      child: const Text(
+                        'Clear search',
+                        style: TextStyle(
+                          color: Color(0xFF5931DD),
+                          fontWeight: FontWeight.w500,
                         ),
-                        SizedBox(width: 4),
-                        Expanded(
-                          child: Text(
-                            location, // e.g. "Somewhere, City"
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey[600],
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
                   ],
                 ),
-
-                trailing: Checkbox(
-                  value: true,
-                  activeColor: const Color(0xFF5931DD),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  onChanged: (value) {},
-                ),
               ),
             ),
-          ),
+          ],
 
-          const Spacer(),
+          if (!_isSearching || _matchesSearch()) const Spacer(),
 
           // Continue button
           Padding(
@@ -1324,8 +2334,14 @@ class MedicineDetailsModal extends StatelessWidget {
             child: ElevatedButton(
               onPressed: () {
                 Navigator.pop(context);
-                Navigator.push(context,
-                    MaterialPageRoute(builder: (context) => CheckoutScreen()));
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => CheckoutScreen(
+                            pharmacyImage: widget.pharmacyImage,
+                            pharmacyName: widget.pharmacyName,
+                          )),
+                );
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF5931DD),
@@ -1334,8 +2350,8 @@ class MedicineDetailsModal extends StatelessWidget {
                   borderRadius: BorderRadius.circular(25),
                 ),
               ),
-              child: const AppText(
-                'continue',
+              child: const Text(
+                'Continue',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,

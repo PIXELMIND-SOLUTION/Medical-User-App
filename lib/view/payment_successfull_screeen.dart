@@ -1,8 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:medical_user_app/view/main_layout.dart';
 import 'package:medical_user_app/view/notification_screen.dart';
+import 'package:medical_user_app/view/order_hystory_screen.dart';
 
 class PaymentSuccessfullScreeen extends StatelessWidget {
-  const PaymentSuccessfullScreeen({super.key});
+  final String? orderId;
+  final double? orderAmount;
+  final String? paymentMethod;
+  final String? addressId;
+  const PaymentSuccessfullScreeen(
+      {super.key,
+      this.orderId,
+      this.paymentMethod,
+      this.orderAmount,
+      this.addressId});
 
   @override
   Widget build(BuildContext context) {
@@ -13,7 +24,13 @@ class PaymentSuccessfullScreeen extends StatelessWidget {
         elevation: 0,
         centerTitle: true,
         leading: InkWell(
-          onTap: () => Navigator.pop(context),
+          onTap: () {
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(builder: (context) => const MainLayout()),
+              (Route<dynamic> route) => false, // removes all previous routes
+            );
+          },
           child: Container(
             margin: const EdgeInsets.all(8),
             decoration: BoxDecoration(
@@ -66,7 +83,13 @@ class PaymentSuccessfullScreeen extends StatelessWidget {
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: () {
-                    Navigator.push(context, MaterialPageRoute(builder: (context)=>NotificationScreen()));
+                    Navigator.pushAndRemoveUntil(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => const MainLayout()),
+                      (Route<dynamic> route) => false,
+                    );
+                    // Navigator.push(context, MaterialPageRoute(builder: (context)=>NotificationScreen()));
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0XFF5931DD),

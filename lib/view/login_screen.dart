@@ -42,13 +42,14 @@ class LoginScreen extends StatelessWidget {
               const SizedBox(height: 8),
 
               // Subtitle (aligned left)
-              const Align(
+               Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
                   'Start with Login Or Signup',
                   style: TextStyle(
                     fontSize: 16,
-                    color: Colors.black54,
+                    color: Colors.black,
+                    fontWeight: FontWeight.bold
                   ),
                 ),
               ),

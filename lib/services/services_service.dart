@@ -1,9 +1,10 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:medical_user_app/constant/api_constants.dart';
 import 'package:medical_user_app/models/services_model.dart';
 
 class ServiceService {
-  static const String baseUrl = 'http://194.164.148.244:7021/api/service';
+  // static const String baseUrl = 'http://194.164.148.244:7021/api/service';
   
   // Headers for API requests
   Map<String, String> get _headers => {
@@ -15,7 +16,7 @@ class ServiceService {
   Future<ServiceResponse> getAllServices() async {
     try {
       final response = await http.get(
-        Uri.parse('$baseUrl/allservice'),
+        Uri.parse(ApiConstants.allServices),
         headers: _headers,
       );
 

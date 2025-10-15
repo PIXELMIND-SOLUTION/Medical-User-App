@@ -193,7 +193,7 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar> {
                 // Add scan functionality here
                 Navigator.of(context).push(
                   MaterialPageRoute(
-                    builder: (context) => const MedicineScannerScreen(),
+                    builder: (context) => const PrescriptionUploadScreen(),
                   ),
                 );
               },

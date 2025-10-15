@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:medical_user_app/view/otp_screen.dart';
-import 'package:medical_user_app/view/home_screen.dart';
 import 'package:medical_user_app/providers/auth_provider.dart';
 
 class WelcomeBackScreen extends StatefulWidget {
@@ -76,10 +75,13 @@ class _WelcomeBackScreenState extends State<WelcomeBackScreen> {
       );
     } else if (authProvider.status == AuthStatus.error) {
       _showErrorSnackBar(
-        authProvider.errorMessage?.isNotEmpty == true
-          ? authProvider.errorMessage!
-          : 'Login failed. Please try again.',
+        'Login Failed Please Register'
       );
+      // _showErrorSnackBar(
+      //   authProvider.errorMessage?.isNotEmpty == true
+      //     ? authProvider.errorMessage!
+      //     : 'Login failed. Please try again.',
+      // );
     }
   } catch (e) {
     _showErrorSnackBar('An unexpected error occurred. Please try again.');
@@ -188,13 +190,14 @@ class _WelcomeBackScreenState extends State<WelcomeBackScreen> {
               const SizedBox(height: 8),
 
               // Subtitle (aligned left)
-              const Align(
+               Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
                   'Hey! Good to see you again',
                   style: TextStyle(
                     fontSize: 16,
-                    color: Colors.black54,
+                    color: Colors.black,
+                    fontWeight: FontWeight.bold
                   ),
                 ),
               ),
@@ -283,7 +286,8 @@ class _WelcomeBackScreenState extends State<WelcomeBackScreen> {
                         ? null 
                         : _handleLogin,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF5E35B1),
+                        backgroundColor: const Color(0xFF5931DD)
+,
                         disabledBackgroundColor: Colors.grey.shade300,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
@@ -300,7 +304,7 @@ class _WelcomeBackScreenState extends State<WelcomeBackScreen> {
                             ),
                           )
                         : const Text(
-                            'Login',
+                            'Get OTP',
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,

@@ -1,9 +1,10 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:medical_user_app/view/login_screen.dart';
+import 'package:medical_user_app/view/otp_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:medical_user_app/providers/auth_provider.dart';
-import 'package:medical_user_app/view/home_screen.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -40,20 +41,6 @@ class _SignupScreenState extends State<SignupScreen> {
       _isValidMobile = mobileController.text.length == 10;
     });
   }
-
-  // void _handleAuthStateChange() {
-  //   final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    
-  //   if (authProvider.isAuthenticated && mounted) {
-  //     // User successfully registered, navigate to home
-  //     Navigator.pushAndRemoveUntil(
-  //       context,
-  //       MaterialPageRoute(builder: (context) => const HomeScreen()),
-  //       (route) => false,
-  //     );
-  //   }
-  // }
-
   @override
   void dispose() {
     nameController.removeListener(_validateForm);
@@ -68,6 +55,102 @@ class _SignupScreenState extends State<SignupScreen> {
 
   bool get _isFormValid => _isValidName && _isValidMobile;
 
+// Future<void> _handleSignup() async {
+//   if (!_formKey.currentState!.validate()) {
+//     return;
+//   }
+
+//   final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+//   try {
+//     await authProvider.register(
+//       name: nameController.text.trim(),
+//       mobile: mobileController.text.trim(),
+//     );
+
+//     if (authProvider.status == AuthStatus.authenticated) {
+//       _showSuccessSnackBar('Account created successfully!');
+//       Navigator.pushReplacement(
+//         context,
+//         MaterialPageRoute(builder: (context) => const LoginScreen()),
+//       );
+//     } else if (authProvider.status == AuthStatus.error) {
+//       _showErrorSnackBar(
+//         authProvider.errorMessage?.isNotEmpty == true
+//             ? authProvider.errorMessage!
+//             : 'Registration failed. Please try again.',
+//       );
+//     }
+//   } catch (e) {
+//     _showErrorSnackBar('An unexpected error occurred. Please try again.');
+//   }
+// }
+
+
+// Future<void> _handleSignup() async {
+//   if (!_formKey.currentState!.validate()) {
+//     return;
+//   }
+
+//   final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+//   try {
+//     await authProvider.register(
+//       name: nameController.text.trim(),
+//       mobile: mobileController.text.trim(),
+//     );
+
+//     // Wait a bit for the state to update
+//     await Future.delayed(const Duration(milliseconds: 100));
+
+//     if (mounted) {
+//       if (authProvider.status == AuthStatus.authenticated) {
+//         _showSuccessSnackBar('Account created successfully!');
+//         Navigator.pushReplacement(
+//           context,
+//           MaterialPageRoute(builder: (context) => const LoginScreen()),
+//         );
+//       } else if (authProvider.status == AuthStatus.error) {
+//         String errorMessage = 'Registration failed. Please try again.';
+        
+//         // Check for specific error messages
+//         if (authProvider.errorMessage?.isNotEmpty == true) {
+//           errorMessage = authProvider.errorMessage!;
+          
+//           // Handle common error cases
+//           if (errorMessage.toLowerCase().contains('already') || 
+//               errorMessage.toLowerCase().contains('exists')) {
+//             errorMessage = 'User already registered with this mobile number.';
+//           }
+//         }
+        
+//         _showErrorSnackBar(errorMessage);
+        
+//         // Debug print for APK debugging
+//         print('Registration Error: $errorMessage'); // This will show in logs
+//       } else {
+//         // Handle case where status is not clear
+//         _showErrorSnackBar('Registration failed. Please check your details and try again.');
+//       }
+//     }
+//   } catch (e) {
+//     if (mounted) {
+//       String errorMessage = 'An unexpected error occurred. Please try again.';
+      
+//       // Handle specific exceptions
+//       if (e.toString().contains('already') || e.toString().contains('exists')) {
+//         errorMessage = 'User already registered with this mobile number.';
+//       }
+      
+//       _showErrorSnackBar(errorMessage);
+      
+//       // Debug print for APK debugging
+//       print('Registration Exception: ${e.toString()}');
+//     }
+//   }
+// }
+
+
 Future<void> _handleSignup() async {
   if (!_formKey.currentState!.validate()) {
     return;
@@ -81,21 +164,56 @@ Future<void> _handleSignup() async {
       mobile: mobileController.text.trim(),
     );
 
-    if (authProvider.status == AuthStatus.authenticated) {
-      _showSuccessSnackBar('Account created successfully!');
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const HomeScreen()),
-      );
-    } else if (authProvider.status == AuthStatus.error) {
-      _showErrorSnackBar(
-        authProvider.errorMessage?.isNotEmpty == true
-            ? authProvider.errorMessage!
-            : 'Registration failed. Please try again.',
-      );
+    // Wait a bit for the state to update
+    // await Future.delayed(const Duration(milliseconds: 100));
+
+    if (mounted) {
+      if (authProvider.status == AuthStatus.authenticated) {
+        _showSuccessSnackBar('Registration successful! OTP sent to your mobile.');
+        
+        // Navigate to OTP screen instead of Login screen
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) =>const OtpScreen()),
+        );
+        
+      } else if (authProvider.status == AuthStatus.error) {
+        String errorMessage = 'Registration failed. Please try again.';
+        
+        // Check for specific error messages
+        if (authProvider.errorMessage?.isNotEmpty == true) {
+          errorMessage = authProvider.errorMessage!;
+          
+          // Handle common error cases
+          if (errorMessage.toLowerCase().contains('already') || 
+              errorMessage.toLowerCase().contains('exists')) {
+            errorMessage = 'User already registered with this mobile number.';
+          }
+        }
+        
+        _showErrorSnackBar(errorMessage);
+        
+        // Debug print for APK debugging
+        print('Registration Error: $errorMessage');
+      } else {
+        // Handle case where status is not clear
+        _showErrorSnackBar('Registration failed. Please check your details and try again.');
+      }
     }
   } catch (e) {
-    _showErrorSnackBar('An unexpected error occurred. Please try again.');
+    if (mounted) {
+      String errorMessage = 'An unexpected error occurred. Please try again.';
+      
+      // Handle specific exceptions
+      if (e.toString().contains('already') || e.toString().contains('exists')) {
+        errorMessage = 'User already registered with this mobile number.';
+      }
+      
+      _showErrorSnackBar(errorMessage);
+      
+      // Debug print for APK debugging
+      print('Registration Exception: ${e.toString()}');
+    }
   }
 }
 
@@ -104,8 +222,9 @@ Future<void> _handleSignup() async {
   void _showErrorSnackBar(String message) {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message),
+      const  SnackBar(
+          content: Text('User already Registered'),
+          // content: Text(message),
           backgroundColor: Colors.red,
           behavior: SnackBarBehavior.floating,
         ),
@@ -183,7 +302,7 @@ Future<void> _handleSignup() async {
                   child: SizedBox(
                     width: 150,
                     height: 173.5,
-                    child: Image.asset("assets/signup.png"),
+                    child: Image.asset("assets/mainlogo.jpg"),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -257,12 +376,12 @@ Future<void> _handleSignup() async {
                 const SizedBox(height: 5),
 
                 // Invitation Code Field
-                _buildInputField(
-                  label: 'Invitation Code ( Optional )',
-                  hint: 'Enter Invitation Code',
-                  controller: invitationController,
-                  isOptional: true,
-                ),
+                // _buildInputField(
+                //   label: 'Invitation Code ( Optional )',
+                //   hint: 'Enter Invitation Code',
+                //   controller: invitationController,
+                //   isOptional: true,
+                // ),
                 const SizedBox(height: 20),
 
                 // Signup Button with loading state
